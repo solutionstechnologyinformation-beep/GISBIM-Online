@@ -1,6 +1,6 @@
 # Mini-QGIS-Online
 
-Um projeto básico em Rust para uma versão mini do QGIS online, usando Rocket para servir uma página web simples.
+Um projeto básico em Rust para uma versão mini do QGIS online, usando Rocket para servir uma página web com um mapa interativo usando Leaflet.
 
 ## Como executar
 
@@ -11,7 +11,7 @@ cargo build
 cargo run
 ```
 
-O servidor será iniciado na porta definida pela variável de ambiente `PORT` (padrão 8000). Acesse http://localhost:PORT para ver a página inicial.
+O servidor será iniciado na porta definida pela variável de ambiente `PORT` (padrão 8000). Acesse http://localhost:PORT para ver o mapa.
 
 ## Deploy
 

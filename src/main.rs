@@ -1,11 +1,7 @@
 #[macro_use] extern crate rocket;
 
 use std::env;
-
-#[get("/")]
-fn index() -> &'static str {
-    "Bem-vindo ao Mini QGIS Online!"
-}
+use rocket::fs::{FileServer, relative};
 
 #[launch]
 fn rocket() -> _ {
@@ -22,5 +18,5 @@ fn rocket() -> _ {
 
     rocket::build()
         .configure(config)
-        .mount("/", routes![index])
+        .mount("/", FileServer::from(relative!("static")))
 }
