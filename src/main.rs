@@ -1,5 +1,7 @@
 #[macro_use] extern crate rocket;
 
+use std::env;
+
 #[get("/")]
 fn index() -> &'static str {
     "Bem-vindo ao Mini QGIS Online!"
@@ -7,5 +9,18 @@ fn index() -> &'static str {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index])
+    let port: u16 = env::var("PORT")
+        .unwrap_or_else(|_| "8000".to_string())
+        .parse()
+        .unwrap_or(8000);
+
+    let config = rocket::Config {
+        port,
+        address: std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
+        ..rocket::Config::default()
+    };
+
+    rocket::build()
+        .configure(config)
+        .mount("/", routes![index])
 }
