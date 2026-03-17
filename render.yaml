@@ -1,12 +1,34 @@
-services:
-  - type: web
-    name: mini-qgis-online
-    env: python
-    plan: free
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && python app.py
-    envVars:
-      - key: FLASK_ENV
-        value: production
-      - key: PORT
-        value: 8000
+# Exported from Render on 2026-03-17T14:08:45Z
+version: "1"
+projects:
+- name: Minigis
+  environments:
+  - name: Production
+    services:
+    - type: web
+      name: Mini-QGIS-Online-1
+      runtime: docker
+      repo: https://github.com/solutionstechnologyinformation-beep/Mini-QGIS-Online
+      plan: free
+      envVars:
+      - key: Python
+        sync: false
+      region: oregon
+      dockerContext: pip install -r backend/requirements.txt
+      dockerfilePath: ./Dockerfile
+      autoDeployTrigger: commit
+      buildFilter:
+        paths:
+        - Build Command
+    - type: web
+      name: Mini-QGIS-Online
+      runtime: rust
+      repo: https://github.com/solutionstechnologyinformation-beep/Mini-QGIS-Online
+      plan: free
+      region: oregon
+      buildCommand: cargo build --release
+      startCommand: https://target/release/mini-qgis-online
+      domains:
+      - miniqgis.com.br
+      - www.miniqgis.com.br
+      autoDeployTrigger: commit
