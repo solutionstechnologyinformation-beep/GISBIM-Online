@@ -266,6 +266,60 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const downloadFileBtn = document.getElementById('downloadFileBtn');
     if (downloadFileBtn) {
-        downloadFileBtn.addEventListener('click', downloadResults);
+        downloadFileBtn.addEventListener("click", downloadResults);
     }
 });
+
+// Função para visualizar arquivo espacial (KMZ/KML)
+async function viewSpatialFile() {
+    const fileInput = document.getElementById("spatialFileUpload");
+    const spatialFileResultDiv = document.getElementById("spatialFileResult");
+
+    spatialFileResultDiv.innerHTML = "";
+
+    if (!fileInput.files.length) {
+        showError("Por favor, selecione um arquivo espacial para visualizar.", spatialFileResultDiv);
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    showLoading(spatialFileResultDiv);
+
+    try {
+        const response = await fetch(`${API_URL}/upload_spatial_file`, {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            showError(errorData.error || `Erro ${response.status}: ${response.statusText}`, spatialFileResultDiv);
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+            // Limpar marcadores existentes e adicionar os novos
+            if (typeof clearAllSpatialMarkers === 'function' && typeof addSpatialMarker === 'function') {
+                clearAllSpatialMarkers();
+                data.features.forEach(feature => {
+                    if (feature.type === 'Point') {
+                        addSpatialMarker(feature.coordinates[1], feature.coordinates[0]); // lat, lng
+                    }
+                });
+                spatialFileResultDiv.innerHTML = `<strong style="color: green;">Arquivo espacial carregado e visualizado no mapa!</strong>`;
+                spatialFileResultDiv.style.color = 'green';
+            } else {
+                showError("Funções de mapa não disponíveis para visualização.", spatialFileResultDiv);
+            }
+        } else {
+            showError("Nenhuma geometria válida encontrada no arquivo espacial.", spatialFileResultDiv);
+        }
+
+    } catch (error) {
+        showError(`Erro de conexão ao visualizar arquivo espacial: ${error.message}`, spatialFileResultDiv);
+    }
+}

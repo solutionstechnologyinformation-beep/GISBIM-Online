@@ -263,3 +263,9 @@ footer p {
     align-items: center;
     justify-content: center;
 }
+
+.spatial-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

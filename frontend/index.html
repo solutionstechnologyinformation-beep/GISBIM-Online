@@ -78,6 +78,14 @@
             <button id="convertFileBtn" onclick="convertFile()" class="btn-convert">Converter Arquivo</button>
             <button id="downloadFileBtn" class="btn-download" style="display:none;">Baixar Resultados</button>
 
+            <h3>Visualizar Arquivo Espacial (KMZ/KML)</h3>
+            <div class="form-group">
+                <label for="spatialFileUpload">Upload de Arquivo Espacial (.kmz, .kml, .geojson, .shp, .gpkg):</label>
+                <input type="file" id="spatialFileUpload" accept=".kmz,.kml,.geojson,.shp,.gpkg">
+            </div>
+            <button id="viewSpatialFileBtn" onclick="viewSpatialFile()" class="btn-convert">Visualizar no Mapa</button>
+            <div id="spatialFileResult" class="result-box"></div>
+
             <div id="fileResult" class="result-box"></div>
         </section>
     </main>

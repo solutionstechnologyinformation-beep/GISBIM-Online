@@ -4,6 +4,7 @@ from flask_cors import CORS
 from pyproj import Transformer
 from werkzeug.utils import secure_filename
 from backend.file_processor import process_coordinate_file, format_results_for_export
+from backend.upload import process_upload, allowed_file as allowed_spatial_file
 import pandas as pd # Para lidar com CSV/TXT de forma robusta
 from dotenv import load_dotenv
 from backend.epsg_codes import EPSG_CODES
@@ -140,6 +141,26 @@ def convert_file():
 
     except Exception as e:
         return jsonify({'error': f'Erro interno do servidor ao processar arquivo: {str(e)}'}), 500
+
+@app.route('/upload_spatial_file', methods=['POST'])
+def upload_spatial_file():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+
+        file = request.files['file']
+        if not allowed_spatial_file(file.filename):
+            return jsonify({'error': 'Tipo de arquivo não permitido. Apenas KMZ, KML, SHP, GeoJSON, GPKG.'}), 400
+
+        result = process_upload(file)
+
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': f'Erro interno do servidor ao processar arquivo espacial: {str(e)}'}), 500
 
 @app.route('/health', methods=['GET'])
 def health():
