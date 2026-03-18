@@ -1,4 +1,7 @@
-// Determinar a URL da API dinamicamente
+const API_URL = getApiUrl();
+let epsgCodes = {};
+let convertedFileData = null;
+
 function getApiUrl() {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         return 'http://localhost:5000';
@@ -6,11 +9,6 @@ function getApiUrl() {
     return window.location.origin;
 }
 
-const API_URL = getApiUrl();
-let epsgCodes = {}; // Armazena os códigos EPSG carregados da API
-let convertedFileData = null; // Armazena os dados convertidos do arquivo para exportação
-
-// Função para carregar os códigos EPSG da API
 async function loadEpsgCodes() {
     try {
         const response = await fetch(`${API_URL}/epsg_codes`);
@@ -18,19 +16,17 @@ async function loadEpsgCodes() {
             throw new Error(`Erro ao carregar códigos EPSG: ${response.statusText}`);
         }
         epsgCodes = await response.json();
-        populateEpsgDropdowns(); // Popula os dropdowns inicialmente sem filtro
+        populateEpsgDropdowns();
     } catch (error) {
         console.error("Erro ao carregar códigos EPSG:", error);
         showError(`Erro ao carregar sistemas de referência: ${error.message}`);
     }
 }
 
-// Função para popular os dropdowns de SRC e DST com base no filtro
 function populateEpsgDropdowns(filterSystem = 'all') {
     const srcSelect = document.getElementById("src");
     const dstSelect = document.getElementById("dst");
 
-    // Limpar opções existentes, exceto a primeira (placeholder)
     srcSelect.innerHTML = `<option value="">-- Selecione --</option>`;
     dstSelect.innerHTML = `<option value="">-- Selecione --</option>`;
 
@@ -52,90 +48,117 @@ function populateEpsgDropdowns(filterSystem = 'all') {
                 optgroup.appendChild(option);
             }
         }
-        // Adicionar o optgroup aos dois selects
         srcSelect.appendChild(optgroup.cloneNode(true));
         dstSelect.appendChild(optgroup.cloneNode(true));
     }
 }
 
-// Função para converter um único ponto
 async function convertSingle() {
     try {
-        const x = document.getElementById("x").value.trim();
-        const y = document.getElementById("y").value.trim();
         const src = document.getElementById("src").value;
         const dst = document.getElementById("dst").value;
+        const inputFormat = document.querySelector("input[name=\"inputFormat\"]:checked").value;
+        const outputFormat = document.getElementById("coordinateFormat").value; // Usar o mesmo seletor para output
 
-        if (!x || !y) {
-            showError('Por favor, preencha as coordenadas X e Y');
-            return;
+        let postData = { src, dst, input_format: inputFormat, output_format: outputFormat };
+
+        if (inputFormat === "dd") {
+            const x = document.getElementById("x").value;
+            const y = document.getElementById("y").value;
+            if (!x || !y || !src || !dst) {
+                alert("Por favor, preencha todas as coordenadas e sistemas de referência.");
+                return;
+            }
+            postData.x = parseFloat(x);
+            postData.y = parseFloat(y);
+        } else if (inputFormat === "dms") {
+            const x_deg = document.getElementById("x_deg").value;
+            const x_min = document.getElementById("x_min").value;
+            const x_sec = document.getElementById("x_sec").value;
+            const x_dir = document.getElementById("x_dir").value;
+            const y_deg = document.getElementById("y_deg").value;
+            const y_min = document.getElementById("y_min").value;
+            const y_sec = document.getElementById("y_sec").value;
+            const y_dir = document.getElementById("y_dir").value;
+
+            if (!x_deg || !x_min || !x_sec || !x_dir || !y_deg || !y_min || !y_sec || !y_dir || !src || !dst) {
+                alert("Por favor, preencha todos os campos de GMS e sistemas de referência.");
+                return;
+            }
+            postData.x_deg = parseFloat(x_deg);
+            postData.x_min = parseFloat(x_min);
+            postData.x_sec = parseFloat(x_sec);
+            postData.x_dir = x_dir;
+            postData.y_deg = parseFloat(y_deg);
+            postData.y_min = parseFloat(y_min);
+            postData.y_sec = parseFloat(y_sec);
+            postData.y_dir = y_dir;
         }
 
-        if (isNaN(parseFloat(x)) || isNaN(parseFloat(y))) {
-            showError('Coordenadas X e Y devem ser números válidos');
-            return;
+        clearMarkers();
+
+        // Adicionar marcador original (apenas para DD, pois GMS precisa de conversão prévia para plotar)
+        if (inputFormat === "dd") {
+            addMarker(postData.y, postData.x, 'Original', 'blue');
         }
 
-        if (!src || !dst) {
-            showError('Por favor, selecione os sistemas de referência de origem e destino');
-            return;
-        }
-
-        showLoading();
-
-        const response = await fetch(`${API_URL}/convert`, {
-            method: 'POST',
+        fetch("/convert", {
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json'
+                "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                x: parseFloat(x),
-                y: parseFloat(y),
-                src: src,
-                dst: dst
-            })
+            body: JSON.stringify(postData),
+        })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.error) {
+                alert("Erro: " + data.error);
+                return;
+            }
+
+            let originalCoordDisplay = "";
+            let convertedCoordDisplay = "";
+
+            if (inputFormat === "dd") {
+                originalCoordDisplay = `Original: ${postData.x}, ${postData.y} (EPSG:${src})`;
+            } else if (inputFormat === "dms") {
+                originalCoordDisplay = `Original: ${postData.x_deg}°${postData.x_min}'${postData.x_sec}" ${postData.x_dir}, ${postData.y_deg}°${postData.y_min}'${postData.y_sec}" ${postData.y_dir} (EPSG:${src})`;
+                // Para plotar o original GMS, precisamos converter para DD primeiro
+                const originalDD_X = dmsToDd(postData.x_deg, postData.x_min, postData.x_sec, postData.x_dir);
+                const originalDD_Y = dmsToDd(postData.y_deg, postData.y_min, postData.y_sec, postData.y_dir);
+                addMarker(originalDD_Y, originalDD_X, 'Original', 'blue');
+            }
+
+            if (outputFormat === "dd") {
+                convertedCoordDisplay = `Convertido: ${data.x}, ${data.y} (EPSG:${dst})`;
+                addMarker(data.y, data.x, 'Convertido', 'red');
+            } else if (outputFormat === "dms") {
+                convertedCoordDisplay = `Convertido: ${data.y_deg}°${data.y_min}'${data.y_sec}" ${data.y_dir}, ${data.x_deg}°${data.x_min}'${data.x_sec}" ${data.x_dir} (EPSG:${dst})`;
+                // Para plotar o convertido GMS, precisamos converter para DD primeiro
+                const convertedDD_X = dmsToDd(data.x_deg, data.x_min, data.x_sec, data.x_dir);
+                const convertedDD_Y = dmsToDd(data.y_deg, data.y_min, data.y_sec, data.y_dir);
+                addMarker(convertedDD_Y, convertedDD_X, 'Convertido', 'red');
+            }
+
+            document.getElementById("result").innerHTML = `
+                <p>${originalCoordDisplay}</p>
+                <p>${convertedCoordDisplay}</p>
+            `;
+        })
+        .catch((error) => {
+            console.error("Erro:", error);
+            showError("Erro ao converter coordenadas.");
         });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            showError(errorData.error || `Erro ${response.status}: ${response.statusText}`);
-            return;
-        }
-
-        const data = await response.json();
-
-        const resultText = `
-            <strong>Resultado da Conversão:</strong><br>
-            X: ${data.x.toFixed(6)}<br>
-            Y: ${data.y.toFixed(6)}<br>
-            De: EPSG:${data.src} → Para: EPSG:${data.dst}
-        `;
-        
-        document.getElementById("result").innerHTML = resultText;
-        document.getElementById("result").style.color = 'green';
-
-        // Adicionar marcadores no mapa
-        if (typeof clearMarkers === 'function' && typeof addOriginalMarker === 'function' && typeof addConvertedMarker === 'function') {
-            clearMarkers();
-            addOriginalMarker(parseFloat(y), parseFloat(x));
-            addConvertedMarker(data.y, data.x);
-        }
-
-        // Limpar resultados de arquivo se houver
-        document.getElementById("fileResult").innerHTML = '';
-        document.getElementById("downloadFileBtn").style.display = 'none';
-        convertedFileData = null;
-
     } catch (error) {
         showError(`Erro de conexão: ${error.message}`);
     }
 }
 
-// Função para converter um arquivo
 async function convertFile() {
     const fileInput = document.getElementById("fileUpload");
     const src = document.getElementById("src").value;
     const dst = document.getElementById("dst").value;
+    const inputFileFormat = document.getElementById("inputFileFormat").value;
     const fileResultDiv = document.getElementById("fileResult");
     const downloadBtn = document.getElementById("downloadFileBtn");
 
@@ -157,6 +180,7 @@ async function convertFile() {
     formData.append('file', fileInput.files[0]);
     formData.append('src', src);
     formData.append('dst', dst);
+    formData.append('input_file_format', inputFileFormat);
 
     showLoading(fileResultDiv);
 
@@ -173,24 +197,63 @@ async function convertFile() {
         }
 
         const data = await response.json();
-        convertedFileData = data; // Armazena os dados para exportação
+        convertedFileData = data;
 
-        // Adicionar marcadores no mapa para os primeiros pontos convertidos do arquivo
-        if (typeof clearMarkers === 'function' && typeof addOriginalMarker === 'function' && typeof addConvertedMarker === 'function') {
+        if (typeof clearMarkers === 'function' && typeof addMarker === 'function') {
             clearMarkers();
-            data.slice(0, 5).forEach(point => { // Mostra os primeiros 5 pontos
-                addOriginalMarker(point.original_y, point.original_x);
-                addConvertedMarker(point.converted_y, point.converted_x);
+            const categories = {}; // Para agrupar pontos por descrição e atribuir cores
+            const colors = ['green', 'purple', 'orange', 'darkblue', 'pink', 'cadetblue', 'brown', 'gray', 'olive', 'teal']; // Cores para categorias
+            let colorIndex = 0;
+
+            data.slice(0, 5).forEach(point => {
+                let original_y_plot, original_x_plot;
+                let converted_y_plot, converted_x_plot;
+                let description = "";
+
+                if (inputFileFormat === "pnec") {
+                    original_y_plot = point.original_y;
+                    original_x_plot = point.original_x;
+                    converted_y_plot = point.converted_y;
+                    converted_x_plot = point.converted_x;
+                    description = point.descricao || "";
+                } else {
+                    original_y_plot = point.original_y;
+                    original_x_plot = point.original_x;
+                    converted_y_plot = point.converted_y;
+                    converted_x_plot = point.converted_x;
+                }
+
+                // Atribuir cor baseada na descrição
+                let categoryColor = 'gray'; // Cor padrão
+                if (description) {
+                    if (!categories[description]) {
+                        categories[description] = colors[colorIndex % colors.length];
+                        colorIndex++;
+                    }
+                    categoryColor = categories[description];
+                }
+
+                addMarker(original_y_plot, original_x_plot, `Original ${point.ponto || ''} (${description})`, categoryColor);
+                addMarker(converted_y_plot, converted_x_plot, `Convertido ${point.ponto || ''} (${description})`, 'red'); // Convertido sempre vermelho
             });
         }
 
         if (data.length > 0) {
-            let tableHtml = '<table class="results-table"><thead><tr><th>Original X</th><th>Original Y</th><th>Convertido X</th><th>Convertido Y</th></tr></thead><tbody>';
-            data.slice(0, 10).forEach(row => { // Mostrar apenas as primeiras 10 linhas na tela
-                tableHtml += `<tr><td>${row.original_x.toFixed(6)}</td><td>${row.original_y.toFixed(6)}</td><td>${row.converted_x.toFixed(6)}</td><td>${row.converted_y.toFixed(6)}</td></tr>`;
+            let tableHtml;
+            if (inputFileFormat === "pnec") {
+                tableHtml = '<table class="results-table"><thead><tr><th>Ponto</th><th>Original N</th><th>Original E</th><th>Cota</th><th>Descrição</th><th>Convertido N</th><th>Convertido E</th></tr></thead><tbody>';
+            } else {
+                tableHtml = '<table class="results-table"><thead><tr><th>Original X</th><th>Original Y</th><th>Convertido X</th><th>Convertido Y</th></tr></thead><tbody>';
+            }
+            data.slice(0, 10).forEach(row => {
+                if (inputFileFormat === "pnec") {
+                    tableHtml += `<tr>\n                        <td>${row.ponto}</td>\n                        <td>${row.original_y.toFixed(6)}</td>\n                        <td>${row.original_x.toFixed(6)}</td>\n                        <td>${row.cota !== null ? row.cota : ''}</td>\n                        <td>${row.descricao !== null ? row.descricao : ''}</td>\n                        <td>${row.converted_y.toFixed(6)}</td>\n                        <td>${row.converted_x.toFixed(6)}</td>\n                    </tr>`;
+                } else {
+                    tableHtml += `<tr><td>${row.original_x.toFixed(6)}</td><td>${row.original_y.toFixed(6)}</td><td>${row.converted_x.toFixed(6)}</td><td>${row.converted_y.toFixed(6)}</td></tr>`;
+                }
             });
             if (data.length > 10) {
-                tableHtml += `<tr><td colspan="4">... e mais ${data.length - 10} linhas. Clique em 'Baixar Resultados' para ver tudo.</td></tr>`;
+                tableHtml += `<tr><td colspan="${inputFileFormat === 'pnec' ? 7 : 4}">... e mais ${data.length - 10} linhas. Clique em 'Baixar Resultados' para ver tudo.</td></tr>`;
             }
             tableHtml += '</tbody></table>';
             fileResultDiv.innerHTML = `<strong>Conversão de Arquivo Concluída!</strong><br>${tableHtml}`;
@@ -205,121 +268,82 @@ async function convertFile() {
     }
 }
 
-// Função para baixar os resultados convertidos
 function downloadResults() {
     if (!convertedFileData) {
         alert('Nenhum dado para baixar.');
         return;
     }
 
-    let csvContent = "original_x,original_y,converted_x,converted_y\n";
-    convertedFileData.forEach(row => {
-        csvContent += `${row.original_x},${row.original_y},${row.converted_x},${row.converted_y}\n`;
-    });
+    let csvContent;
+    if (convertedFileData[0] && 'ponto' in convertedFileData[0]) {
+        csvContent = "Ponto,Original_N,Original_E,Cota,Descricao,Convertido_N,Convertido_E\n";
+        convertedFileData.forEach(row => {
+            csvContent += `${row.ponto},${row.original_y},${row.original_x},${row.cota !== null ? row.cota : ''},${row.descricao !== null ? row.descricao : ''},${row.converted_y},${row.converted_x}\n`;
+        });
+    } else {
+        csvContent = "Original_X,Original_Y,Convertido_X,Convertido_Y\n";
+        convertedFileData.forEach(row => {
+            csvContent += `${row.original_x},${row.original_y},${row.converted_x},${row.converted_y}\n`;
+        });
+    }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'coordenadas_convertidas.csv';
-    link.click();
-    URL.revokeObjectURL(link.href);
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'coordenadas_convertidas.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 }
 
-// Funções de feedback visual
 function showError(message, targetDiv = null) {
-    const resultDiv = targetDiv || document.getElementById("result");
-    resultDiv.innerHTML = `<strong style="color: red;">Erro:</strong> ${message}`;
-    resultDiv.style.color = 'red';
+    const div = targetDiv || document.getElementById("result");
+    div.innerHTML = `<p style="color: red;">${message}</p>`;
+    div.style.color = 'red';
 }
 
-function showLoading(targetDiv = null) {
-    const resultDiv = targetDiv || document.getElementById("result");
-    resultDiv.innerHTML = '<em>Processando...</em>';
-    resultDiv.style.color = 'gray';
+function showLoading(targetDiv) {
+    targetDiv.innerHTML = `<p style="color: blue;">Processando... Por favor, aguarde.</p>`;
+    targetDiv.style.color = 'blue';
 }
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    loadEpsgCodes(); // Carregar os códigos EPSG ao iniciar a página
+document.addEventListener("DOMContentLoaded", () => {
+    loadEpsgCodes();
 
-    const systemFilter = document.getElementById("systemFilter");
-    if (systemFilter) {
-        systemFilter.addEventListener("change", function() {
-            populateEpsgDropdowns(this.value);
+    // Evento para alternar entre inputs DD e GMS
+    document.querySelectorAll("input[name=\"inputFormat\"]").forEach(radio => {
+        radio.addEventListener("change", (event) => {
+            if (event.target.value === "dd") {
+                document.getElementById("ddInputs").style.display = "block";
+                document.getElementById("dmsInputs").style.display = "none";
+            } else {
+                document.getElementById("ddInputs").style.display = "none";
+                document.getElementById("dmsInputs").style.display = "block";
+            }
         });
-    }
+    });
 
-    const xInput = document.getElementById("x");
-    const yInput = document.getElementById("y");
-    
-    if (xInput) {
-        xInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') convertSingle();
-        });
-    }
-    
-    if (yInput) {
-        yInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') convertSingle();
-        });
-    }
-
-    const downloadFileBtn = document.getElementById('downloadFileBtn');
-    if (downloadFileBtn) {
-        downloadFileBtn.addEventListener("click", downloadResults);
-    }
+    // Adicionar evento de clique no mapa
+    map.on("click", function (e) {
+        // Apenas preenche se o formato de entrada for DD
+        if (document.querySelector("input[name=\"inputFormat\"]:checked").value === "dd") {
+            document.getElementById("x").value = e.latlng.lng.toFixed(6);
+            document.getElementById("y").value = e.latlng.lat.toFixed(6);
+        } else {
+            showError("Para preencher do mapa, alterne para o formato de entrada Graus Decimais (DD).");
+        }
+    });
 });
 
-// Função para visualizar arquivo espacial (KMZ/KML)
-async function viewSpatialFile() {
-    const fileInput = document.getElementById("spatialFileUpload");
-    const spatialFileResultDiv = document.getElementById("spatialFileResult");
-
-    spatialFileResultDiv.innerHTML = "";
-
-    if (!fileInput.files.length) {
-        showError("Por favor, selecione um arquivo espacial para visualizar.", spatialFileResultDiv);
-        return;
+// Função auxiliar para converter GMS para DD no frontend (para plotagem)
+function dmsToDd(degrees, minutes, seconds, direction) {
+    let dd = parseFloat(degrees) + parseFloat(minutes) / 60 + parseFloat(seconds) / (60 * 60);
+    if (direction === "S" || direction === "W") {
+        dd = dd * -1;
     }
-
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
-
-    showLoading(spatialFileResultDiv);
-
-    try {
-        const response = await fetch(`${API_URL}/upload_spatial_file`, {
-            method: "POST",
-            body: formData
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            showError(errorData.error || `Erro ${response.status}: ${response.statusText}`, spatialFileResultDiv);
-            return;
-        }
-
-        const data = await response.json();
-
-        if (data.features && data.features.length > 0) {
-            // Limpar marcadores existentes e adicionar os novos
-            if (typeof clearAllSpatialMarkers === 'function' && typeof addSpatialMarker === 'function') {
-                clearAllSpatialMarkers();
-                data.features.forEach(feature => {
-                    if (feature.type === 'Point') {
-                        addSpatialMarker(feature.coordinates[1], feature.coordinates[0]); // lat, lng
-                    }
-                });
-                spatialFileResultDiv.innerHTML = `<strong style="color: green;">Arquivo espacial carregado e visualizado no mapa!</strong>`;
-                spatialFileResultDiv.style.color = 'green';
-            } else {
-                showError("Funções de mapa não disponíveis para visualização.", spatialFileResultDiv);
-            }
-        } else {
-            showError("Nenhuma geometria válida encontrada no arquivo espacial.", spatialFileResultDiv);
-        }
-
-    } catch (error) {
-        showError(`Erro de conexão ao visualizar arquivo espacial: ${error.message}`, spatialFileResultDiv);
-    }
+    return dd;
 }
