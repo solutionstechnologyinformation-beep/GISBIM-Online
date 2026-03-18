@@ -1,29 +1,19 @@
-
-# Exported from Render on 2026-03-17T14:08:45Z (Modified by Manus AI)
 version: "1"
-projects:
-- name: Mini-QGIS-Online
-  environments:
-  - name: Production
-    services:
-    - type: web
-      name: mini-qgis-backend
-      runtime: docker
-      repo: https://github.com/solutionstechnologyinformation-beep/Mini-QGIS-Online
-      plan: free
-      region: oregon
-      # O Render detectará automaticamente o Dockerfile na raiz do projeto
-      # dockerContext: .
-      # dockerfilePath: ./Dockerfile
-      autoDeploy: true # Habilita o deploy automático em cada commit
-      envVars:
-      - key: FLASK_ENV
-        value: production
-      - key: PORT
-        value: 5000
-      # Adicione outras variáveis de ambiente necessárias aqui, como CORS_ORIGINS
-      # - key: CORS_ORIGINS
-      #   value: "https://your-frontend-domain.com"
-      # buildFilter:
-      #   paths:
-      #   - Build Command # Removido, pois não é necessário com Dockerfile na raiz
+services:
+- type: web
+  name: mini-qgis-online
+  runtime: docker
+  repo: https://github.com/solutionstechnologyinformation-beep/Mini-QGIS-Online
+  plan: free
+  region: oregon
+  # Render detectará automaticamente o Dockerfile na raiz do projeto
+  dockerContext: .
+  dockerfilePath: ./Dockerfile
+  autoDeploy: true
+  envVars:
+  - key: FLASK_ENV
+    value: production
+  - key: PORT
+    value: 5000
+  - key: HOST
+    value: 0.0.0.0

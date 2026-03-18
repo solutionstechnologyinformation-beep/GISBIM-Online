@@ -1,0 +1,8 @@
+[package]
+name = "mini-qgis-online"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Este arquivo foi criado para satisfazer a detecção do Render,
+# mas o projeto é uma aplicação Python (Flask) que deve ser executada via Docker.
