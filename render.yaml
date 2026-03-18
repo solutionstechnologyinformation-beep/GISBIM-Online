@@ -17,3 +17,5 @@ services:
     value: 5000
   - key: HOST
     value: 0.0.0.0
+  - key: PYTHONPATH
+    value: /app
