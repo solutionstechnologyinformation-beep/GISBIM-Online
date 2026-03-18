@@ -1,6 +1,6 @@
 import os
 import io
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from pyproj import Transformer
 from backend.spatial import dms_to_dd, dd_to_dms, convert
@@ -9,6 +9,7 @@ from backend.upload import process_upload, allowed_file as allowed_spatial_file
 import pandas as pd # Para lidar com CSV/TXT de forma robusta
 from dotenv import load_dotenv
 from backend.epsg_codes import EPSG_CODES
+from backend.exporters import export_to_kml, export_to_dxf
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -270,13 +271,34 @@ def not_found(error):
     """Tratador para erros 404."""
     return jsonify({\'error\': \'Endpoint não encontrado\'}), 404
 
-
-@app.route("/epsg_codes", methods=["GET"])
+@app.route(\"/epsg_codes\", methods=[\"GET\"])
 def get_epsg_codes():
     """Retorna os códigos EPSG disponíveis."""
     return jsonify(EPSG_CODES)
 
-@app.errorhandler(500)
+@app.route(\"/export_kml\", methods=[\"POST\"])
+def export_kml_route():
+    try:
+        data = request.json.get("data")
+        input_file_format = request.json.get("input_file_format")
+        if not data:
+            return jsonify({"error": "Nenhum dado para exportar"}), 400
+        kml_data = export_to_kml(data, input_file_format)
+        return Response(kml_data, mimetype="application/vnd.google-earth.kml+xml", headers={"Content-disposition": "attachment; filename=coordenadas_convertidas.kml"})
+    except Exception as e:
+        return jsonify({"error": f"Erro ao exportar KML: {str(e)}"}), 500
+
+@app.route(\"/export_dxf\", methods=[\"POST\"])
+def export_dxf_route():
+    try:
+        data = request.json.get("data")
+        input_file_format = request.json.get("input_file_format")
+        if not data:
+            return jsonify({"error": "Nenhum dado para exportar"}), 400
+        dxf_data = export_to_dxf(data, input_file_format)
+        return Response(dxf_data, mimetype="application/dxf", headers={"Content-disposition": "attachment; filename=coordenadas_convertidas.dxf"})
+    except Exception as e:
+        return jsonify({"error": f"Erro ao exportar DXF: {str(e)}"}), 500app.errorhandler(500)
 def internal_error(error):
     """Tratador para erros 500."""
     return jsonify({\'error\': \'Erro interno do servidor\'}), 500

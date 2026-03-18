@@ -161,9 +161,13 @@ async function convertFile() {
     const inputFileFormat = document.getElementById("inputFileFormat").value;
     const fileResultDiv = document.getElementById("fileResult");
     const downloadBtn = document.getElementById("downloadFileBtn");
+    const downloadKmlBtn = document.getElementById("downloadKmlBtn");
+    const downloadDxfBtn = document.getElementById("downloadDxfBtn");
 
     fileResultDiv.innerHTML = '';
     downloadBtn.style.display = 'none';
+    downloadKmlBtn.style.display = 'none';
+    downloadDxfBtn.style.display = 'none';
     convertedFileData = null;
 
     if (!fileInput.files.length) {
@@ -259,6 +263,8 @@ async function convertFile() {
             fileResultDiv.innerHTML = `<strong>Conversão de Arquivo Concluída!</strong><br>${tableHtml}`;
             fileResultDiv.style.color = 'green';
             downloadBtn.style.display = 'inline-block';
+            downloadKmlBtn.style.display = 'inline-block';
+            downloadDxfBtn.style.display = 'inline-block';
         } else {
             showError('Nenhuma coordenada válida foi convertida.', fileResultDiv);
         }
@@ -300,6 +306,86 @@ function downloadResults() {
     }
 }
 
+async function downloadKml() {
+    if (!convertedFileData) {
+        alert('Nenhum dado para baixar.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/export_kml`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                data: convertedFileData,
+                input_file_format: document.getElementById("inputFileFormat").value
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            showError(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'coordenadas_convertidas.kml';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error("Erro ao baixar KML:", error);
+        showError(`Erro ao baixar KML: ${error.message}`);
+    }
+}
+
+async function downloadDxf() {
+    if (!convertedFileData) {
+        alert('Nenhum dado para baixar.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/export_dxf`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                data: convertedFileData,
+                input_file_format: document.getElementById("inputFileFormat").value
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            showError(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'coordenadas_convertidas.dxf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error("Erro ao baixar DXF:", error);
+        showError(`Erro ao baixar DXF: ${error.message}`);
+    }
+}
+
 function showError(message, targetDiv = null) {
     const div = targetDiv || document.getElementById("result");
     div.innerHTML = `<p style="color: red;">${message}</p>`;
@@ -313,6 +399,9 @@ function showLoading(targetDiv) {
 
 document.addEventListener("DOMContentLoaded", () => {
     loadEpsgCodes();
+
+    document.getElementById("downloadKmlBtn").addEventListener("click", downloadKml);
+    document.getElementById("downloadDxfBtn").addEventListener("click", downloadDxf);
 
     // Evento para alternar entre inputs DD e GMS
     document.querySelectorAll("input[name=\"inputFormat\"]").forEach(radio => {
