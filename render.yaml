@@ -1,9 +1,9 @@
 version: "1"
 services:
 - type: web
-  name: mini-qgis-online
+  name: gisbim-online
   runtime: docker
-  repo: https://github.com/solutionstechnologyinformation-beep/Mini-QGIS-Online
+  repo: https://github.com/solutionstechnologyinformation-beep/GISBIM-Online
   plan: free
   region: oregon
   # Render detectará automaticamente o Dockerfile na raiz do projeto
