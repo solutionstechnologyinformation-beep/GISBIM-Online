@@ -1,12 +1,39 @@
 // Inicializar mapa com Leaflet
 var map = L.map('map').setView([-14, -52], 4);
 
-// Adicionar camada de tiles do OpenStreetMap
-var osm = L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { maxZoom: 19 }
-);
-osm.addTo(map);
+// Camadas de Base
+var baseLayers = {
+    "road": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }),
+    "satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
+    }),
+    "3d": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17,
+        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+    })
+};
+
+// Adicionar camada inicial
+baseLayers.road.addTo(map);
+
+// Função para mudar a camada de base
+function changeBaseLayer(layerKey) {
+    // Remover todas as camadas de base
+    Object.values(baseLayers).forEach(layer => {
+        if (map.hasLayer(layer)) {
+            map.removeLayer(layer);
+        }
+    });
+    
+    // Adicionar a nova camada
+    if (baseLayers[layerKey]) {
+        baseLayers[layerKey].addTo(map);
+    }
+}
 
 // Variáveis globais
 var pointsList = []; // Lista para armazenar pontos coletados
@@ -39,7 +66,20 @@ map.on('click', function(e) {
     var lng = e.latlng.lng;
     var type = document.getElementById('pointType') ? document.getElementById('pointType').value : 'ponto';
     var color = document.getElementById('pointColor') ? document.getElementById('pointColor').value : typeColors[type];
+    var description = document.getElementById('pointDesc') ? document.getElementById('pointDesc').value : '';
     
+    addPointToMap(lat, lng, type, color, description);
+    
+    // Limpar campo de descrição após adicionar
+    if (document.getElementById('pointDesc')) {
+        document.getElementById('pointDesc').value = '';
+    }
+});
+
+/**
+ * Adiciona um ponto ao mapa e à lista global
+ */
+function addPointToMap(lat, lng, type, color, description) {
     // Atualizar cor padrão
     typeColors[type] = color;
     
@@ -51,14 +91,61 @@ map.on('click', function(e) {
         weight: 1,
         opacity: 1,
         fillOpacity: 0.8
-    }).bindPopup(`<strong>Tipo:</strong> ${type}<br><strong>Lat:</strong> ${lat.toFixed(6)}<br><strong>Lng:</strong> ${lng.toFixed(6)}`);
+    }).bindPopup(`<strong>Tipo:</strong> ${type}<br><strong>Descrição:</strong> ${description || 'N/A'}<br><strong>Lat:</strong> ${lat.toFixed(6)}<br><strong>Lng:</strong> ${lng.toFixed(6)}`);
+    
+    // Armazenar descrição no marcador para facilitar o filtro
+    marker.description = (description || '').toLowerCase();
     
     // Adicionar à camada correta e à lista de pontos
     pointLayers[type].addLayer(marker);
-    pointsList.push({x: lng, y: lat, type: type, color: color});
+    pointsList.push({x: lng, y: lat, type: type, color: color, description: description || ''});
     
-    console.log("Ponto adicionado:", type, color, {x: lng, y: lat});
-});
+    updatePointsCount();
+    console.log("Ponto adicionado:", type, color, description, {x: lng, y: lat});
+}
+
+/**
+ * Filtra os pontos visíveis no mapa com base na descrição na aba lateral
+ */
+function filterPointsByDescription() {
+    var filterText = document.getElementById('filterDescription').value.toLowerCase();
+    var visibleCount = 0;
+    
+    Object.keys(pointLayers).forEach(type => {
+        pointLayers[type].eachLayer(function(layer) {
+            var desc = layer.description || '';
+            if (desc.includes(filterText)) {
+                if (!map.hasLayer(layer)) {
+                    pointLayers[type].addLayer(layer);
+                }
+                visibleCount++;
+            } else {
+                pointLayers[type].removeLayer(layer);
+            }
+        });
+    });
+    
+    updatePointsCount(visibleCount);
+}
+
+/**
+ * Atualiza o contador de pontos visíveis na aba lateral
+ */
+function updatePointsCount(count) {
+    var totalVisible = 0;
+    if (count !== undefined) {
+        totalVisible = count;
+    } else {
+        Object.keys(pointLayers).forEach(type => {
+            totalVisible += pointLayers[type].getLayers().length;
+        });
+    }
+    
+    var countElement = document.getElementById('pointsCount');
+    if (countElement) {
+        countElement.innerText = `Pontos visíveis: ${totalVisible}`;
+    }
+}
 
 /**
  * Aplicar filtro de cores aos pontos de um tipo específico
@@ -185,6 +272,7 @@ function clearMap() {
     polygons.forEach(polygon => map.removeLayer(polygon));
     polygons = [];
     
+    updatePointsCount();
     console.log("Mapa limpo");
 }
 
@@ -211,6 +299,7 @@ function undoLastPoint() {
         pointLayers[lastPoint.type].removeLayer(layerToRemove);
     }
     
+    updatePointsCount();
     console.log(`Último ponto removido: ${lastPoint.type} em (${lastPoint.y}, ${lastPoint.x})`);
 }
 

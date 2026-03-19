@@ -22,10 +22,40 @@
     </header>
 
     <main>
-        <section class="map-section">
-            <h2>Mapa Interativo</h2>
-            <p class="hint">Clique no mapa para obter as coordenadas</p>
-            <div id="map"></div>
+        <section class="map-container-section">
+            <div class="map-layout">
+                <aside class="map-sidebar" id="sidebar">
+                    <h3>Filtro de Pontos</h3>
+                    <div class="sidebar-content">
+                        <div class="form-group">
+                            <label for="filterDescription">Filtrar por Descrição:</label>
+                            <input type="text" id="filterDescription" placeholder="Digite a descrição..." oninput="filterPointsByDescription()">
+                        </div>
+                        <div class="filter-stats">
+                            <p id="pointsCount">Pontos visíveis: 0</p>
+                        </div>
+                        <hr>
+                        <div class="layer-selector">
+                            <h4>Visualização</h4>
+                            <div class="layer-option">
+                                <input type="radio" name="baseLayer" id="layerRoad" value="road" checked onchange="changeBaseLayer('road')">
+                                <label for="layerRoad">Estrada (OSM)</label>
+                            </div>
+                            <div class="layer-option">
+                                <input type="radio" name="baseLayer" id="layerSatellite" value="satellite" onchange="changeBaseLayer('satellite')">
+                                <label for="layerSatellite">Satélite</label>
+                            </div>
+                            <div class="layer-option">
+                                <input type="radio" name="baseLayer" id="layer3D" value="3d" onchange="changeBaseLayer('3d')">
+                                <label for="layer3D">3D (Terreno)</label>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+                <div class="map-wrapper">
+                    <div id="map"></div>
+                </div>
+            </div>
         </section>
 
         <section id="fileUploadSection" class="upload-section">
@@ -34,9 +64,9 @@
             <button onclick="uploadFile()" class="btn-upload">Upload</button>
             <div id="uploadResult" class="result-box"></div>
         </section>
+
         <section class="converter-section">
             <h2>Conversor de Coordenadas</h2>
-            
             
             <div class="form-group">
                 <label for="coordMode">Modo de Entrada:</label>
@@ -48,13 +78,19 @@
             </div>
             
             <div id="ddInputs">
-                <div class="form-group">
-                    <label for="x">Longitude (X):</label>
-                    <input type="number" id="x" placeholder="Ex: -55.5" step="0.000001">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="x">Longitude (X):</label>
+                        <input type="number" id="x" placeholder="Ex: -55.5" step="0.000001">
+                    </div>
+                    <div class="form-group">
+                        <label for="y">Latitude (Y):</label>
+                        <input type="number" id="y" placeholder="Ex: -15.5" step="0.000001">
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="y">Latitude (Y):</label>
-                    <input type="number" id="y" placeholder="Ex: -15.5" step="0.000001">
+                    <label for="pointDesc">Descrição do Ponto:</label>
+                    <input type="text" id="pointDesc" placeholder="Ex: Ponto de controle 01">
                 </div>
             </div>
             
@@ -64,27 +100,22 @@
                     <input type="number" id="xd" placeholder="G" style="width:60px;">
                     <input type="number" id="xm" placeholder="M" style="width:60px;">
                     <input type="number" id="xs" placeholder="S" style="width:80px;">
-                    <select id="xdir"><option value="E">E</option><option value="W">W</option></select>
+                    <select id="xdir"><option value="E">E</option><option value="W" selected>W</option></select>
                 </div>
                 <h4>Latitude (Y)</h4>
                 <div class="form-row">
                     <input type="number" id="yd" placeholder="G" style="width:60px;">
                     <input type="number" id="ym" placeholder="M" style="width:60px;">
                     <input type="number" id="ys" placeholder="S" style="width:80px;">
-                    <select id="ydir"><option value="N">N</option><option value="S">S</option></select>
+                    <select id="ydir"><option value="N">N</option><option value="S" selected>S</option></select>
                 </div>
             </div>
-<!-- Removido antigo input -->
-                
-
-            
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="src">Sistema de Origem:</label>
                     <select id="src">
-                        <option value="">-- Selecione --</option>
-                        <option value="4326">WGS84 (EPSG:4326)</option>
+                        <option value="4326" selected>WGS84 (EPSG:4326)</option>
                         <option value="4674">SIRGAS2000 (EPSG:4674)</option>
                         <option value="31983">UTM 23S (EPSG:31983)</option>
                     </select>
@@ -93,21 +124,20 @@
                 <div class="form-group">
                     <label for="dst">Sistema de Destino:</label>
                     <select id="dst">
-                        <option value="">-- Selecione --</option>
                         <option value="4326">WGS84 (EPSG:4326)</option>
-                        <option value="4674">SIRGAS2000 (EPSG:4674)</option>
+                        <option value="4674" selected>SIRGAS2000 (EPSG:4674)</option>
                         <option value="31983">UTM 23S (EPSG:31983)</option>
                     </select>
                 </div>
             </div>
 
-            <button id="convertBtn" onclick="convert()" class="btn-convert">Converter</button>
+            <button id="convertBtn" onclick="convert()" class="btn-convert">Converter e Adicionar ao Mapa</button>
 
             <div id="result" class="result-box"></div>
         </section>
     
         <section id="exportSection" class="export-section">
-            <h2>Exportação e Filtros</h2>
+            <h2>Exportação e Configurações de Pontos</h2>
             <div class="form-row">
                 <div class="form-group">
                     <label for="exportFormat">Formato de Exportação:</label>
@@ -118,31 +148,41 @@
                         <option value="dxf">DXF</option>
                     </select>
                 </div>
-                <button onclick="exportData()" class="btn-convert">Exportar Pontos</button>
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                    <button onclick="exportData()" class="btn-convert">Exportar Pontos</button>
+                </div>
             </div>
             
             <div class="filter-group">
-                <h3>Filtro de Pontos</h3>
-                <label for="pointType">Tipo de Ponto:</label>
-                <select id="pointType">
-                    <option value="all">Todos</option>
-                    <option value="bordo">Bordo</option>
-                    <option value="manilha">Manilha</option>
-                    <option value="pe">Pé</option>
-                    <option value="crista">Crista</option>
-                    <option value="outros">Outros</option>
-                </select>
-                <label for="pointColor">Cor:</label>
-                <input type="color" id="pointColor" value="#ff0000">
-                <button onclick="applyFilters()" class="btn-convert">Aplicar Filtro/Cor</button>
+                <h3>Configurações de Exibição</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pointType">Tipo de Ponto:</label>
+                        <select id="pointType">
+                            <option value="all">Todos</option>
+                            <option value="bordo">Bordo</option>
+                            <option value="manilha">Manilha</option>
+                            <option value="pe">Pé</option>
+                            <option value="crista">Crista</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="pointColor">Cor:</label>
+                        <input type="color" id="pointColor" value="#ff0000" style="height: 45px;">
+                    </div>
+                </div>
+                <button onclick="applyFilters()" class="btn-convert">Aplicar Cor ao Tipo</button>
             </div>
             
             <div class="polygon-group">
                 <h3>Ferramentas de Desenho</h3>
-                <button onclick="connectPoints()" class="btn-convert">Ligar Pontos</button>
-                <button onclick="closePolygon()" class="btn-convert">Fechar Polígono (Mancha)</button>
-                <button onclick="undoLastPoint()" class="btn-undo">Desfazer Último Ponto</button>
-                <button onclick="clearMap()" class="btn-clear">Limpar Mapa</button>
+                <div class="btn-grid">
+                    <button onclick="connectPoints()" class="btn-convert">Ligar Pontos</button>
+                    <button onclick="closePolygon()" class="btn-convert">Fechar Polígono</button>
+                    <button onclick="undoLastPoint()" class="btn-undo">Desfazer Último</button>
+                    <button onclick="clearMap()" class="btn-clear">Limpar Tudo</button>
+                </div>
             </div>
         </section>
 
@@ -162,6 +202,7 @@
     <!-- Custom Scripts -->
     <script src="map.js"></script>
     <script src="converter.js"></script>
+    <script src="upload.js"></script>
 </body>
 
 </html>

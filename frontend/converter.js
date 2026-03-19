@@ -33,7 +33,7 @@ async function convert() {
         const coordMode = document.getElementById('coordMode').value;
         let x, y;
         
-        if (coordMode === 'dd') {
+        if (coordMode === 'dd' || coordMode === 'utm') {
             x = document.getElementById('x').value.trim();
             y = document.getElementById('y').value.trim();
         } else if (coordMode === 'dms') {
@@ -49,13 +49,13 @@ async function convert() {
             
             x = dmsToDD(xd, xm, xs, xdir);
             y = dmsToDD(yd, ym, ys, ydir);
-        } else if (coordMode === 'utm') {
-            x = document.getElementById('x').value.trim();
-            y = document.getElementById('y').value.trim();
         }
         
         const src = document.getElementById('src').value;
         const dst = document.getElementById('dst').value;
+        const description = document.getElementById('pointDesc') ? document.getElementById('pointDesc').value : '';
+        const type = document.getElementById('pointType') ? document.getElementById('pointType').value : 'ponto';
+        const color = document.getElementById('pointColor') ? document.getElementById('pointColor').value : '#ff0000';
         
         if (!x || !y) {
             showError('Por favor, preencha as coordenadas X e Y');
@@ -96,25 +96,62 @@ async function convert() {
         
         const data = await response.json();
         
+        // Adicionar o ponto ao mapa (sempre em WGS84 para o Leaflet)
+        // Se o destino for 4326, usamos o resultado. Se não, a API deve retornar o WGS84 também?
+        // Na verdade, a API /convert retorna as coordenadas no sistema de destino.
+        // O Leaflet precisa de 4326.
+        
+        let latForMap, lngForMap;
+        if (data.dst === "4326") {
+            latForMap = data.y;
+            lngForMap = data.x;
+        } else {
+            // Se o destino não for WGS84, precisamos converter para WGS84 para exibir no mapa
+            // Vamos assumir que a API pode nos dar o WGS84 ou fazemos outra chamada.
+            // Por simplicidade, se o usuário quer ver no mapa, o ideal é que o destino seja 4326.
+            // Mas vamos tentar pegar o ponto original se for 4326.
+            if (data.src === "4326") {
+                latForMap = parseFloat(y);
+                lngForMap = parseFloat(x);
+            } else {
+                // Caso complexo: nem origem nem destino são 4326. 
+                // Para este MVP, vamos alertar ou tentar converter para 4326.
+                const resWgs84 = await fetch(`${API_URL}/convert`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({x: parseFloat(x), y: parseFloat(y), src: src, dst: "4326", mode: coordMode})
+                });
+                const dataWgs84 = await resWgs84.json();
+                latForMap = dataWgs84.y;
+                lngForMap = dataWgs84.x;
+            }
+        }
+        
+        if (typeof addPointToMap === 'function') {
+            addPointToMap(latForMap, lngForMap, type, color, description);
+            map.setView([latForMap, lngForMap], 15);
+        }
+
         // Formatar resultado de acordo com o modo de saída
         let resultText = `<strong>Resultado da Conversão:</strong><br>`;
         resultText += `De: EPSG:${data.src} → Para: EPSG:${data.dst}<br>`;
         
-        if (coordMode === 'dd') {
-            resultText += `X (Longitude): ${data.x.toFixed(6)}<br>`;
-            resultText += `Y (Latitude): ${data.y.toFixed(6)}<br>`;
+        if (coordMode === 'dd' || coordMode === 'utm') {
+            resultText += `X: ${data.x.toFixed(6)}<br>`;
+            resultText += `Y: ${data.y.toFixed(6)}<br>`;
         } else if (coordMode === 'dms') {
             const xDMS = ddToDMS(data.x);
             const yDMS = ddToDMS(data.y);
             resultText += `X: ${xDMS.degrees}° ${xDMS.minutes}' ${xDMS.seconds}" ${xDMS.isNegative ? 'W' : 'E'}<br>`;
             resultText += `Y: ${yDMS.degrees}° ${yDMS.minutes}' ${yDMS.seconds}" ${yDMS.isNegative ? 'S' : 'N'}<br>`;
-        } else if (coordMode === 'utm') {
-            resultText += `X (Easting): ${data.x.toFixed(2)}<br>`;
-            resultText += `Y (Northing): ${data.y.toFixed(2)}<br>`;
         }
         
         document.getElementById('result').innerHTML = resultText;
         document.getElementById('result').style.color = 'green';
+        
+        // Limpar campos
+        if (document.getElementById('pointDesc')) document.getElementById('pointDesc').value = '';
+        
     } catch (error) {
         showError(`Erro de conexão: ${error.message}`);
     }
@@ -150,14 +187,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function toggleCoordInputs() {
     const mode = document.getElementById('coordMode').value;
-    document.getElementById('ddInputs').style.display = (mode === 'dd' || mode === 'utm') ? 'block' : 'none';
-    document.getElementById('dmsInputs').style.display = (mode === 'dms') ? 'block' : 'none';
+    const ddInputs = document.getElementById('ddInputs');
+    const dmsInputs = document.getElementById('dmsInputs');
+    
+    if (ddInputs) ddInputs.style.display = (mode === 'dd' || mode === 'utm') ? 'block' : 'none';
+    if (dmsInputs) dmsInputs.style.display = (mode === 'dms') ? 'block' : 'none';
     
     if (mode === 'utm') {
-        document.querySelector('label[for="x"]').innerText = "Easting (X):";
-        document.querySelector('label[for="y"]').innerText = "Northing (Y):";
+        const xLabel = document.querySelector('label[for="x"]');
+        const yLabel = document.querySelector('label[for="y"]');
+        if (xLabel) xLabel.innerText = "Easting (X):";
+        if (yLabel) yLabel.innerText = "Northing (Y):";
     } else {
-        document.querySelector('label[for="x"]').innerText = "Longitude (X):";
-        document.querySelector('label[for="y"]').innerText = "Latitude (Y):";
+        const xLabel = document.querySelector('label[for="x"]');
+        const yLabel = document.querySelector('label[for="y"]');
+        if (xLabel) xLabel.innerText = "Longitude (X):";
+        if (yLabel) yLabel.innerText = "Latitude (Y):";
     }
 }
