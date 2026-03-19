@@ -4,6 +4,7 @@ from flask_cors import CORS
 from pyproj import Transformer
 from dotenv import load_dotenv
 from .upload import process_upload
+from .spatial import dms_to_dd, dd_to_dms
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -105,15 +106,6 @@ def upload_file():
 
 
 
-def dd_to_dms(dd):
-    """Converte graus decimais para graus, minutos e segundos."""
-    is_positive = dd >= 0
-    dd = abs(dd)
-    minutes, seconds = divmod(dd * 3600, 60)
-    degrees, minutes = divmod(minutes, 60)
-    degrees = degrees if is_positive else -degrees
-    return int(degrees), int(minutes), round(seconds, 2)
-
 @app.route('/convert_dms', methods=['POST'])
 def convert_dms():
     try:
@@ -170,6 +162,9 @@ def export_full():
         fmt = data.get('format', 'txt').lower()
         points = data.get('points', [])
         
+        if not points:
+            return jsonify({'error': 'Nenhum ponto para exportar'}), 400
+        
         filename = f"export_points.{fmt}"
         # Garantir que o diretório de uploads exista
         os.makedirs('../data/uploads', exist_ok=True)
@@ -187,16 +182,58 @@ def export_full():
         elif fmt == 'kml':
             content = '<?xml version="1.0" encoding="UTF-8"?>\n'
             content += '<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n'
+            
+            # Agrupar pontos por tipo
+            types_dict = {}
+            for p in points:
+                ptype = p.get('type', 'ponto')
+                if ptype not in types_dict:
+                    types_dict[ptype] = []
+                types_dict[ptype].append(p)
+            
+            # Adicionar pontos individuais
             for i, p in enumerate(points):
                 content += f'<Placemark>\n<name>{p.get("type", "ponto")} {i}</name>\n'
                 content += f'<Point><coordinates>{p["x"]},{p["y"]},0</coordinates></Point>\n'
                 content += '</Placemark>\n'
+            
+            # Adicionar poligonos por tipo
+            for ptype, type_points in types_dict.items():
+                if len(type_points) >= 3:
+                    content += f'<Placemark>\n<name>Poligono {ptype}</name>\n'
+                    content += '<Polygon>\n<outerBoundaryIs>\n<LinearRing>\n<coordinates>\n'
+                    for p in type_points:
+                        content += f"{p['x']},{p['y']},0 \n"
+                    if type_points:
+                        content += f"{type_points[0]['x']},{type_points[0]['y']},0\n"
+                    content += '</coordinates>\n</LinearRing>\n</outerBoundaryIs>\n</Polygon>\n</Placemark>\n'
+            
             content += '</Document>\n</kml>'
         elif fmt == 'dxf':
-            # Formato DXF básico para pontos
-            content = "0\nSECTION\n2\nENTITIES\n"
+            # Formato DXF com pontos e poligonos
+            content = "0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n"
+            
+            # Adicionar pontos
+            for i, p in enumerate(points):
+                content += f"0\nPOINT\n8\n{p.get('type', 'default')}\n10\n{p['x']}\n20\n{p['y']}\n30\n0.0\n"
+            
+            # Agrupar pontos por tipo para poligonos
+            types_dict = {}
             for p in points:
-                content += f"0\nPOINT\n8\n{p.get('type', '0')}\n10\n{p['x']}\n20\n{p['y']}\n30\n0.0\n"
+                ptype = p.get('type', 'ponto')
+                if ptype not in types_dict:
+                    types_dict[ptype] = []
+                types_dict[ptype].append(p)
+            
+            # Adicionar poligonos (LWPOLYLINE em DXF)
+            for ptype, type_points in types_dict.items():
+                if len(type_points) >= 3:
+                    content += f"0\nLWPOLYLINE\n8\n{ptype}\n70\n1\n"
+                    for p in type_points:
+                        content += f"10\n{p['x']}\n20\n{p['y']}\n"
+                    if type_points:
+                        content += f"10\n{type_points[0]['x']}\n20\n{type_points[0]['y']}\n"
+            
             content += "0\nENDSEC\n0\nEOF"
         else:
             return jsonify({'error': 'Formato não suportado'}), 400
@@ -214,13 +251,6 @@ def download_file(filename):
     return send_from_directory('../data/uploads', filename, as_attachment=True)
 
 
-
-def dms_to_dd(degrees, minutes, seconds, direction):
-    """Converte graus, minutos e segundos para graus decimais."""
-    dd = float(degrees) + float(minutes)/60 + float(seconds)/(60*60)
-    if direction in ['S', 'W', 'O']:
-        dd *= -1
-    return dd
 
 @app.route('/convert_from_dms', methods=['POST'])
 def convert_from_dms():

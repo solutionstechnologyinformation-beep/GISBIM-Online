@@ -10,36 +10,70 @@ function getApiUrl() {
 
 const API_URL = getApiUrl();
 
+// Funções de conversão de coordenadas
+function dmsToDD(degrees, minutes, seconds, direction) {
+    let dd = parseFloat(degrees) + parseFloat(minutes) / 60 + parseFloat(seconds) / 3600;
+    if (direction === 'S' || direction === 'W') {
+        dd *= -1;
+    }
+    return dd;
+}
+
+function ddToDMS(dd) {
+    const isNegative = dd < 0;
+    dd = Math.abs(dd);
+    const degrees = Math.floor(dd);
+    const minutes = Math.floor((dd - degrees) * 60);
+    const seconds = ((dd - degrees - minutes / 60) * 3600).toFixed(2);
+    return { degrees, minutes, seconds, isNegative };
+}
+
 async function convert() {
     try {
-        // Obter valores dos inputs
-        const x = document.getElementById("x").value.trim();
-        const y = document.getElementById("y").value.trim();
-        const src = document.getElementById("src").value;
-        const dst = document.getElementById("dst").value;
-
-        // Validar campos
+        const coordMode = document.getElementById('coordMode').value;
+        let x, y;
+        
+        if (coordMode === 'dd') {
+            x = document.getElementById('x').value.trim();
+            y = document.getElementById('y').value.trim();
+        } else if (coordMode === 'dms') {
+            const xd = parseFloat(document.getElementById('xd').value) || 0;
+            const xm = parseFloat(document.getElementById('xm').value) || 0;
+            const xs = parseFloat(document.getElementById('xs').value) || 0;
+            const xdir = document.getElementById('xdir').value;
+            
+            const yd = parseFloat(document.getElementById('yd').value) || 0;
+            const ym = parseFloat(document.getElementById('ym').value) || 0;
+            const ys = parseFloat(document.getElementById('ys').value) || 0;
+            const ydir = document.getElementById('ydir').value;
+            
+            x = dmsToDD(xd, xm, xs, xdir);
+            y = dmsToDD(yd, ym, ys, ydir);
+        } else if (coordMode === 'utm') {
+            x = document.getElementById('x').value.trim();
+            y = document.getElementById('y').value.trim();
+        }
+        
+        const src = document.getElementById('src').value;
+        const dst = document.getElementById('dst').value;
+        
         if (!x || !y) {
             showError('Por favor, preencha as coordenadas X e Y');
             return;
         }
-
-        // Validar se são números
+        
         if (isNaN(parseFloat(x)) || isNaN(parseFloat(y))) {
             showError('Coordenadas X e Y devem ser números válidos');
             return;
         }
-
-        // Validar se os sistemas de referência foram selecionados
+        
         if (!src || !dst) {
             showError('Por favor, selecione os sistemas de referência de origem e destino');
             return;
         }
-
-        // Mostrar mensagem de carregamento
+        
         showLoading();
-
-        // Fazer requisição à API
+        
         const response = await fetch(`${API_URL}/convert`, {
             method: 'POST',
             headers: {
@@ -49,30 +83,38 @@ async function convert() {
                 x: parseFloat(x),
                 y: parseFloat(y),
                 src: src,
-                dst: dst
+                dst: dst,
+                mode: coordMode
             })
         });
-
-        // Processar resposta
+        
         if (!response.ok) {
             const errorData = await response.json();
             showError(errorData.error || `Erro ${response.status}: ${response.statusText}`);
             return;
         }
-
-        const data = await response.json();
-
-        // Exibir resultado com mais precisão
-        const resultText = `
-            <strong>Resultado da Conversão:</strong><br>
-            X: ${data.x.toFixed(6)}<br>
-            Y: ${data.y.toFixed(6)}<br>
-            De: EPSG:${data.src} → Para: EPSG:${data.dst}
-        `;
         
-        document.getElementById("result").innerHTML = resultText;
-        document.getElementById("result").style.color = 'green';
-
+        const data = await response.json();
+        
+        // Formatar resultado de acordo com o modo de saída
+        let resultText = `<strong>Resultado da Conversão:</strong><br>`;
+        resultText += `De: EPSG:${data.src} → Para: EPSG:${data.dst}<br>`;
+        
+        if (coordMode === 'dd') {
+            resultText += `X (Longitude): ${data.x.toFixed(6)}<br>`;
+            resultText += `Y (Latitude): ${data.y.toFixed(6)}<br>`;
+        } else if (coordMode === 'dms') {
+            const xDMS = ddToDMS(data.x);
+            const yDMS = ddToDMS(data.y);
+            resultText += `X: ${xDMS.degrees}° ${xDMS.minutes}' ${xDMS.seconds}" ${xDMS.isNegative ? 'W' : 'E'}<br>`;
+            resultText += `Y: ${yDMS.degrees}° ${yDMS.minutes}' ${yDMS.seconds}" ${yDMS.isNegative ? 'S' : 'N'}<br>`;
+        } else if (coordMode === 'utm') {
+            resultText += `X (Easting): ${data.x.toFixed(2)}<br>`;
+            resultText += `Y (Northing): ${data.y.toFixed(2)}<br>`;
+        }
+        
+        document.getElementById('result').innerHTML = resultText;
+        document.getElementById('result').style.color = 'green';
     } catch (error) {
         showError(`Erro de conexão: ${error.message}`);
     }
@@ -105,20 +147,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-
-function toggleCoordInputs() {
-    const mode = document.getElementById('coordMode').value;
-    document.getElementById('ddInputs').style.display = (mode === 'dd' || mode === 'utm') ? 'block' : 'none';
-    document.getElementById('dmsInputs').style.display = (mode === 'dms') ? 'block' : 'none';
-    
-    if (mode === 'utm') {
-        document.querySelector('label[for="x"]').innerText = "Easting (X):";
-        document.querySelector('label[for="y"]').innerText = "Northing (Y):";
-    } else {
-        document.querySelector('label[for="x"]').innerText = "Longitude (X):";
-        document.querySelector('label[for="y"]').innerText = "Latitude (Y):";
-    }
-}
 
 function toggleCoordInputs() {
     const mode = document.getElementById('coordMode').value;

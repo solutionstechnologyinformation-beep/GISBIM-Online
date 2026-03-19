@@ -130,6 +130,7 @@
                     <option value="manilha">Manilha</option>
                     <option value="pe">Pé</option>
                     <option value="crista">Crista</option>
+                    <option value="outros">Outros</option>
                 </select>
                 <label for="pointColor">Cor:</label>
                 <input type="color" id="pointColor" value="#ff0000">
@@ -140,6 +141,8 @@
                 <h3>Ferramentas de Desenho</h3>
                 <button onclick="connectPoints()" class="btn-convert">Ligar Pontos</button>
                 <button onclick="closePolygon()" class="btn-convert">Fechar Polígono (Mancha)</button>
+                <button onclick="undoLastPoint()" class="btn-undo">Desfazer Último Ponto</button>
+                <button onclick="clearMap()" class="btn-clear">Limpar Mapa</button>
             </div>
         </section>
 
