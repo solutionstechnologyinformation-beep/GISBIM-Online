@@ -11,5 +11,11 @@ try:
     from .upload_simple import process_upload, allowed_file
 except ImportError:
     from .upload import process_upload, allowed_file
-from .raster import info
 
+# Tentar importar raster, mas não falhar se rasterio não estiver instalado
+try:
+    from .raster import info
+except ImportError:
+    # rasterio é opcional, não é crítico para a aplicação
+    def info(file):
+        return {"error": "rasterio não está instalado"}
