@@ -1,7 +1,7 @@
 version: "1"
 services:
 - type: web
-  name: gisbim-online
+  name: GISBIM-Online
   runtime: docker
   repo: https://github.com/solutionstechnologyinformation-beep/GISBIM-Online
   plan: free
