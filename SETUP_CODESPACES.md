@@ -1,3 +1,26 @@
+# Setup GISBIM Online v2.0 no Codespaces
+
+## Instruções para Atualizar no Visual Studio Code Codespaces
+
+### Passo 1: Abrir no Codespaces
+
+1. Acesse o repositório: https://github.com/solutionstechnologyinformation-beep/GISBIM-Online
+2. Clique em **Code** → **Codespaces** → **Create codespace on main**
+3. Aguarde o ambiente carregar (5-10 minutos)
+
+### Passo 2: Abrir Terminal
+
+No Codespaces:
+1. Pressione **Ctrl + `** (backtick) para abrir o terminal
+2. Ou clique em **Terminal** → **New Terminal**
+
+### Passo 3: Atualizar Arquivos
+
+#### 3.1 Atualizar backend/spatial.py
+
+```bash
+# Copiar o arquivo atualizado
+cat > backend/spatial.py << 'EOF'
 """
 Módulo de conversão de coordenadas geográficas.
 Suporta conversão entre DD (Graus Decimais), DMS (Graus Minutos Segundos) e UTM.
@@ -185,3 +208,175 @@ def validate_utm(zone, easting, northing):
         return False, "Northing deve estar entre 0 e 10000000"
     
     return True, "Coordenadas UTM válidas"
+EOF
+```
+
+#### 3.2 Atualizar backend/requirements.txt
+
+```bash
+cat > backend/requirements.txt << 'EOF'
+Flask>=2.3.0,<3.0.0
+flask-cors>=4.0.0,<5.0.0
+pyproj>=3.4.0,<4.0.0
+python-dotenv>=1.0.0,<2.0.0
+geopandas>=0.13.0
+werkzeug>=2.3.0
+rasterio>=1.3.0
+gunicorn>=21.2.0
+pandas>=2.0.0
+fiona>=1.9.0
+simplekml>=1.3.0
+ezdxf>=1.0.0
+shapefile>=2.3.0
+EOF
+```
+
+#### 3.3 Atualizar backend/app.py
+
+Copie o conteúdo do arquivo `backend/app.py` fornecido e substitua o arquivo atual no Codespaces.
+
+### Passo 4: Instalar Dependências
+
+```bash
+# Ativar ambiente virtual (se necessário)
+python3 -m venv venv
+source venv/bin/activate  # Linux/macOS
+# ou
+venv\Scripts\activate  # Windows
+
+# Instalar dependências
+pip install -r backend/requirements.txt
+```
+
+### Passo 5: Testar Localmente
+
+```bash
+# Verificar sintaxe
+python3 -m py_compile backend/spatial.py backend/app.py
+
+# Executar aplicação
+cd backend
+python app.py
+```
+
+A aplicação estará em: http://localhost:5000
+
+### Passo 6: Fazer Commit e Push
+
+```bash
+# Verificar mudanças
+git status
+
+# Adicionar arquivos
+git add backend/spatial.py backend/app.py backend/requirements.txt
+
+# Commit
+git commit -m "feat: Atualizar GISBIM Online v2.0 com suporte DD/DMS/UTM
+
+- Adicionar conversão completa DD/DMS/UTM
+- Novos endpoints de conversão
+- Processamento em lote
+- Validação de coordenadas
+- Documentação de API"
+
+# Push para GitHub
+git push origin main
+```
+
+### Passo 7: Deploy no Render
+
+1. Acesse https://render.com
+2. Clique em "New +" → "Web Service"
+3. Conecte seu GitHub
+4. Selecione o repositório GISBIM-Online
+5. Configure:
+   - **Build Command**: `pip install -r backend/requirements.txt`
+   - **Start Command**: `cd backend && gunicorn --bind 0.0.0.0:$PORT --workers 2 app:app`
+   - **Environment**: Python 3.11
+6. Clique em "Create Web Service"
+
+## Verificação de Funcionalidades
+
+### Testar Endpoints
+
+```bash
+# Health check
+curl http://localhost:5000/health
+
+# Converter DD para DMS
+curl -X POST http://localhost:5000/convert/dd-to-dms \
+  -H "Content-Type: application/json" \
+  -d '{"latitude": -23.5505, "longitude": -46.6333}'
+
+# Converter DD para UTM
+curl -X POST http://localhost:5000/convert/dd-to-utm \
+  -H "Content-Type: application/json" \
+  -d '{"latitude": -23.5505, "longitude": -46.6333}'
+
+# Processar lote
+curl -X POST http://localhost:5000/batch-convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "dd-to-dms",
+    "points": [
+      {"name": "SP", "latitude": -23.5505, "longitude": -46.6333},
+      {"name": "RJ", "latitude": -22.9068, "longitude": -43.1729}
+    ]
+  }'
+```
+
+## Troubleshooting no Codespaces
+
+### Erro: "Module not found"
+
+```bash
+# Reinstalar dependências
+pip install --upgrade -r backend/requirements.txt
+```
+
+### Erro: "Port already in use"
+
+```bash
+# Usar porta diferente
+cd backend
+python app.py --port 5001
+```
+
+### Erro: "Permission denied"
+
+```bash
+# Dar permissão de execução
+chmod +x backend/app.py
+```
+
+## Estrutura de Arquivos Atualizada
+
+```
+GISBIM-Online/
+├── backend/
+│   ├── app.py                  # ✓ ATUALIZADO
+│   ├── spatial.py              # ✓ ATUALIZADO
+│   ├── requirements.txt         # ✓ ATUALIZADO
+│   ├── upload.py
+│   ├── exporters.py
+│   └── ...
+├── frontend/
+│   └── ...
+├── API_ENDPOINTS.md            # ✓ NOVO
+├── README_NOVO.md              # ✓ NOVO
+└── ...
+```
+
+## Próximos Passos
+
+1. ✓ Atualizar arquivos no Codespaces
+2. ✓ Testar localmente
+3. ✓ Fazer commit e push
+4. ✓ Deploy no Render
+5. Monitorar logs no Render
+6. Testar endpoints em produção
+
+---
+
+**Data**: 19 de Março de 2026  
+**Versão**: 2.0.0

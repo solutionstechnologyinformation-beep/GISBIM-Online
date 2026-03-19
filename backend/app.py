@@ -4,7 +4,10 @@ from flask_cors import CORS
 from pyproj import Transformer
 from dotenv import load_dotenv
 from .upload import process_upload
-from .spatial import dms_to_dd, dd_to_dms
+from .spatial import (
+    dms_to_dd, dd_to_dms, dd_to_utm, utm_to_dd,
+    format_dms, format_utm, validate_dd, validate_utm
+)
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -90,6 +93,125 @@ def convert():
         return jsonify({'error': f'Erro interno do servidor: {str(e)}'}), 500
 
 
+@app.route('/convert/dd-to-dms', methods=['POST'])
+def convert_dd_to_dms():
+    """Converte Graus Decimais (DD) para Graus Minutos Segundos (DMS)."""
+    try:
+        data = request.json
+        latitude = float(data.get('latitude'))
+        longitude = float(data.get('longitude'))
+        
+        # Validar coordenadas
+        valid, msg = validate_dd(latitude, longitude)
+        if not valid:
+            return jsonify({'error': msg}), 400
+        
+        lat_str, lon_str = format_dms(latitude, longitude)
+        
+        return jsonify({
+            'latitude': latitude,
+            'longitude': longitude,
+            'latitude_dms': lat_str,
+            'longitude_dms': lon_str,
+            'format': 'DMS'
+        })
+    except Exception as e:
+        return jsonify({'error': f'Erro ao converter: {str(e)}'}), 400
+
+
+@app.route('/convert/dd-to-utm', methods=['POST'])
+def convert_dd_to_utm():
+    """Converte Graus Decimais (DD) para UTM."""
+    try:
+        data = request.json
+        latitude = float(data.get('latitude'))
+        longitude = float(data.get('longitude'))
+        
+        # Validar coordenadas
+        valid, msg = validate_dd(latitude, longitude)
+        if not valid:
+            return jsonify({'error': msg}), 400
+        
+        zone, easting, northing, hemisphere = dd_to_utm(latitude, longitude)
+        utm_str = format_utm(zone, easting, northing, hemisphere)
+        
+        return jsonify({
+            'latitude': latitude,
+            'longitude': longitude,
+            'utm_zone': zone,
+            'utm_hemisphere': hemisphere,
+            'utm_easting': round(easting, 2),
+            'utm_northing': round(northing, 2),
+            'utm_formatted': utm_str,
+            'format': 'UTM'
+        })
+    except Exception as e:
+        return jsonify({'error': f'Erro ao converter: {str(e)}'}), 400
+
+
+@app.route('/convert/utm-to-dd', methods=['POST'])
+def convert_utm_to_dd():
+    """Converte UTM para Graus Decimais (DD)."""
+    try:
+        data = request.json
+        zone = int(data.get('zone'))
+        easting = float(data.get('easting'))
+        northing = float(data.get('northing'))
+        hemisphere = data.get('hemisphere', 'N')
+        
+        # Validar coordenadas UTM
+        valid, msg = validate_utm(zone, easting, northing)
+        if not valid:
+            return jsonify({'error': msg}), 400
+        
+        latitude, longitude = utm_to_dd(zone, easting, northing, hemisphere)
+        
+        return jsonify({
+            'utm_zone': zone,
+            'utm_easting': easting,
+            'utm_northing': northing,
+            'utm_hemisphere': hemisphere,
+            'latitude': round(latitude, 6),
+            'longitude': round(longitude, 6),
+            'format': 'DD'
+        })
+    except Exception as e:
+        return jsonify({'error': f'Erro ao converter: {str(e)}'}), 400
+
+
+@app.route('/convert/dms-to-dd', methods=['POST'])
+def convert_dms_to_dd():
+    """Converte Graus Minutos Segundos (DMS) para Graus Decimais (DD)."""
+    try:
+        data = request.json
+        lat_deg = float(data.get('lat_degrees'))
+        lat_min = float(data.get('lat_minutes'))
+        lat_sec = float(data.get('lat_seconds'))
+        lat_dir = data.get('lat_direction', 'N')
+        
+        lon_deg = float(data.get('lon_degrees'))
+        lon_min = float(data.get('lon_minutes'))
+        lon_sec = float(data.get('lon_seconds'))
+        lon_dir = data.get('lon_direction', 'E')
+        
+        latitude = dms_to_dd(lat_deg, lat_min, lat_sec, lat_dir)
+        longitude = dms_to_dd(lon_deg, lon_min, lon_sec, lon_dir)
+        
+        # Validar resultado
+        valid, msg = validate_dd(latitude, longitude)
+        if not valid:
+            return jsonify({'error': msg}), 400
+        
+        return jsonify({
+            'latitude_dms': f"{lat_deg}° {lat_min}' {lat_sec}\" {lat_dir}",
+            'longitude_dms': f"{lon_deg}° {lon_min}' {lon_sec}\" {lon_dir}",
+            'latitude': round(latitude, 6),
+            'longitude': round(longitude, 6),
+            'format': 'DD'
+        })
+    except Exception as e:
+        return jsonify({'error': f'Erro ao converter: {str(e)}'}), 400
+
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -105,7 +227,6 @@ def upload_file():
     return jsonify({'message': 'Arquivo processado com sucesso', 'data': result})
 
 
-
 @app.route('/convert_dms', methods=['POST'])
 def convert_dms():
     try:
@@ -113,8 +234,8 @@ def convert_dms():
         x = float(data['x'])
         y = float(data['y'])
         
-        deg_x, min_x, sec_x = dd_to_dms(x)
-        deg_y, min_y, sec_y = dd_to_dms(y)
+        deg_x, min_x, sec_x, _ = dd_to_dms(x)
+        deg_y, min_y, sec_y, _ = dd_to_dms(y)
         
         return jsonify({
             'x_dms': f"{deg_x}° {min_x}' {sec_x}\"",
@@ -122,6 +243,7 @@ def convert_dms():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 @app.route('/export', methods=['POST'])
 def export_data():
@@ -139,7 +261,7 @@ def export_data():
             for i, p in enumerate(points):
                 content += f"{i},{p['x']},{p['y']},{p.get('type', 'ponto')}\n"
         elif fmt == 'txt':
-            content = "Exportação Mini-QGIS\n"
+            content = "Exportação GISBIM Online\n"
             for p in points:
                 content += f"X: {p['x']}, Y: {p['y']}\n"
         else:
@@ -151,7 +273,6 @@ def export_data():
         return jsonify({'message': f'Arquivo {filename} gerado com sucesso', 'url': f'/download/{filename}'})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
 
 
 @app.route('/export_full', methods=['POST'])
@@ -245,42 +366,102 @@ def export_full():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/download/<filename>', methods=['GET'])
 def download_file(filename):
     """Permite o download dos arquivos gerados."""
-    return send_from_directory('../data/uploads', filename, as_attachment=True)
+    try:
+        return send_from_directory('../data/uploads', filename, as_attachment=True)
+    except Exception as e:
+        return jsonify({'error': f'Erro ao baixar arquivo: {str(e)}'}), 400
 
 
-
-@app.route('/convert_from_dms', methods=['POST'])
-def convert_from_dms():
+@app.route('/batch-convert', methods=['POST'])
+def batch_convert():
+    """Processa lote de coordenadas para conversão."""
     try:
         data = request.json
-        # Espera {lat: {d, m, s, dir}, lng: {d, m, s, dir}}
-        lat = dms_to_dd(data['lat']['d'], data['lat']['m'], data['lat']['s'], data['lat']['dir'])
-        lng = dms_to_dd(data['lng']['d'], data['lng']['m'], data['lng']['s'], data['lng']['dir'])
-        return jsonify({'lat': lat, 'lng': lng})
+        points = data.get('points', [])
+        conversion_type = data.get('type', 'dd-to-dms')  # dd-to-dms, dd-to-utm, utm-to-dd
+        
+        if not points:
+            return jsonify({'error': 'Nenhum ponto fornecido'}), 400
+        
+        results = []
+        errors = []
+        
+        for i, point in enumerate(points):
+            try:
+                if conversion_type == 'dd-to-dms':
+                    lat = float(point.get('latitude'))
+                    lon = float(point.get('longitude'))
+                    lat_str, lon_str = format_dms(lat, lon)
+                    results.append({
+                        'id': i,
+                        'name': point.get('name', f'Ponto {i+1}'),
+                        'latitude': lat,
+                        'longitude': lon,
+                        'latitude_dms': lat_str,
+                        'longitude_dms': lon_str,
+                        'status': 'success'
+                    })
+                
+                elif conversion_type == 'dd-to-utm':
+                    lat = float(point.get('latitude'))
+                    lon = float(point.get('longitude'))
+                    zone, easting, northing, hemisphere = dd_to_utm(lat, lon)
+                    results.append({
+                        'id': i,
+                        'name': point.get('name', f'Ponto {i+1}'),
+                        'latitude': lat,
+                        'longitude': lon,
+                        'utm_zone': zone,
+                        'utm_hemisphere': hemisphere,
+                        'utm_easting': round(easting, 2),
+                        'utm_northing': round(northing, 2),
+                        'status': 'success'
+                    })
+                
+                elif conversion_type == 'utm-to-dd':
+                    zone = int(point.get('zone'))
+                    easting = float(point.get('easting'))
+                    northing = float(point.get('northing'))
+                    hemisphere = point.get('hemisphere', 'N')
+                    lat, lon = utm_to_dd(zone, easting, northing, hemisphere)
+                    results.append({
+                        'id': i,
+                        'name': point.get('name', f'Ponto {i+1}'),
+                        'utm_zone': zone,
+                        'utm_easting': easting,
+                        'utm_northing': northing,
+                        'latitude': round(lat, 6),
+                        'longitude': round(lon, 6),
+                        'status': 'success'
+                    })
+            except Exception as e:
+                errors.append({'id': i, 'error': str(e)})
+                results.append({'id': i, 'status': 'error', 'error': str(e)})
+        
+        return jsonify({
+            'total': len(points),
+            'processed': len([r for r in results if r.get('status') == 'success']),
+            'errors': len(errors),
+            'results': results
+        })
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': f'Erro ao processar lote: {str(e)}'}), 500
 
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Endpoint de verificação de saúde da API."""
-    return jsonify({'status': 'ok', 'environment': FLASK_ENV})
+    """Verifica a saúde da aplicação."""
+    return jsonify({
+        'status': 'healthy',
+        'message': 'GISBIM Online está funcionando',
+        'version': '2.0.0'
+    })
 
 
-@app.errorhandler(404)
-def not_found(error):
-    """Tratador para erros 404."""
-    return jsonify({'error': 'Endpoint não encontrado'}), 404
-
-
-@app.errorhandler(500)
-def internal_error(error):
-    """Tratador para erros 500."""
-    return jsonify({'error': 'Erro interno do servidor'}), 500
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(host=HOST, port=PORT, debug=(FLASK_ENV == 'development'))
