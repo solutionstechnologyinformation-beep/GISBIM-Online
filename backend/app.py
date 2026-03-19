@@ -3,11 +3,20 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from pyproj import Transformer
 from dotenv import load_dotenv
-from .upload import process_upload
-from .spatial import (
-    dms_to_dd, dd_to_dms, dd_to_utm, utm_to_dd,
-    format_dms, format_utm, validate_dd, validate_utm
-)
+
+# Tentar imports relativos (para módulo) ou absolutos (para script)
+try:
+    from .upload_simple import process_upload
+    from .spatial import (
+        dms_to_dd, dd_to_dms, dd_to_utm, utm_to_dd,
+        format_dms, format_utm, validate_dd, validate_utm
+    )
+except ImportError:
+    from upload_simple import process_upload
+    from spatial import (
+        dms_to_dd, dd_to_dms, dd_to_utm, utm_to_dd,
+        format_dms, format_utm, validate_dd, validate_utm
+    )
 
 # Carregar variáveis de ambiente
 load_dotenv()

@@ -7,6 +7,9 @@ scripts are executed from the project root.
 
 # make imports available at package level if desired
 from .spatial import convert
-from .upload import process_upload, allowed_file
+try:
+    from .upload_simple import process_upload, allowed_file
+except ImportError:
+    from .upload import process_upload, allowed_file
 from .raster import info
 
