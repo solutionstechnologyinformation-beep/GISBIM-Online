@@ -14,307 +14,51 @@ html, body {
 
 /* Header */
 header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
     color: white;
-    padding: 2rem 1rem;
+    padding: 1.5rem 1rem;
     text-align: center;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 header h1 {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     margin-bottom: 0.5rem;
 }
 
 header p {
-    font-size: 1rem;
-    opacity: 0.9;
+    font-size: 0.9rem;
+    opacity: 0.8;
 }
 
 /* Main content */
 main {
-    max-width: 1200px;
-    margin: 2rem auto;
+    max-width: 1400px;
+    margin: 1.5rem auto;
     padding: 0 1rem;
 }
 
 section {
     background: white;
     border-radius: 8px;
-    padding: 2rem;
-    margin-bottom: 2rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 section h2 {
-    color: #667eea;
+    color: #2d3748;
     margin-bottom: 1rem;
-    font-size: 1.8rem;
-}
-
-/* Mapa */
-#map {
-    height: 500px;
-    width: 100%;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    margin-bottom: 1rem;
-}
-
-.hint {
-    color: #666;
-    font-size: 0.9rem;
-    font-style: italic;
-    margin-bottom: 1rem;
-}
-
-/* Formulário */
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-}
-
-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: #333;
-}
-
-input[type="number"],
-select {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-    transition: border-color 0.3s ease;
-}
-
-input[type="number"]:focus,
-select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-/* Botão */
-.btn-convert {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 0.75rem 2rem;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    width: 100%;
-}
-
-.btn-convert:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.btn-convert:active {
-    transform: translateY(0);
-}
-
-/* Resultado */
-.result-box {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    border-radius: 4px;
-    background-color: #f9f9f9;
-    border-left: 4px solid #667eea;
-    min-height: 3rem;
-    display: flex;
-    align-items: center;
-}
-
-.result-box:empty {
-    display: none;
-}
-
-/* Footer */
-footer {
-    background-color: #333;
-    color: white;
-    text-align: center;
-    padding: 2rem 1rem;
-    margin-top: 3rem;
-}
-
-footer p {
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-/* Responsividade */
-@media (max-width: 768px) {
-    header h1 {
-        font-size: 2rem;
-    }
-
-    main {
-        margin: 1rem auto;
-    }
-
-    section {
-        padding: 1.5rem;
-    }
-
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
-    #map {
-        height: 300px;
-    }
-
-    .btn-convert {
-        padding: 0.6rem 1.5rem;
-        font-size: 0.9rem;
-    }
-}
-
-@media (max-width: 480px) {
-    header h1 {
-        font-size: 1.5rem;
-    }
-
-    header p {
-        font-size: 0.9rem;
-    }
-
-    section {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    section h2 {
-        font-size: 1.3rem;
-    }
-
-    #map {
-        height: 250px;
-    }
-}
-
-/* Tabela de Resultados */
-.results-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-    font-size: 0.9rem;
-}
-
-.results-table th, .results-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
-}
-
-.results-table th {
-    background-color: #f2f2f2;
-    font-weight: bold;
-}
-
-.results-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-.results-table tr:hover {
-    background-color: #f1f1f1;
-}
-
-/* Botão de Download */
-.btn-download {
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-    color: white;
-    padding: 0.75rem 2rem;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    width: 100%;
-    margin-top: 1rem;
-    text-align: center;
-    display: inline-block;
-    text-decoration: none;
-}
-
-.btn-download:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
-}
-
-/* Botão de Desfazer */
-.btn-undo {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-    padding: 0.75rem 2rem;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    width: 100%;
-    margin-top: 0.5rem;
-}
-
-.btn-undo:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-}
-
-/* Botão de Limpar */
-.btn-clear {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: white;
-    padding: 0.75rem 2rem;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    width: 100%;
-    margin-top: 0.5rem;
-}
-
-.btn-clear:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-}
-
-/* Estilos de Marcadores */
-.original-marker, .converted-marker {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.spatial-marker {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-size: 1.5rem;
+    border-bottom: 2px solid #4a5568;
+    padding-bottom: 0.5rem;
 }
 
 /* Layout do Mapa com Aba Lateral */
 .map-layout {
     display: flex;
     gap: 1rem;
-    height: 600px;
+    height: 650px;
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -322,31 +66,45 @@ footer p {
 }
 
 .map-sidebar {
-    width: 250px;
+    width: 320px;
     background: #f8f9fa;
     border-right: 1px solid #ddd;
-    padding: 1rem;
     display: flex;
     flex-direction: column;
+}
+
+/* Abas na Sidebar */
+.sidebar-tabs {
+    display: flex;
+    background: #e2e8f0;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: #4a5568;
+    transition: background 0.2s;
+}
+
+.tab-btn.active {
+    background: #fff;
+    color: #2d3748;
+    border-bottom: 2px solid #2d3748;
+}
+
+.tab-content {
+    display: none;
+    padding: 1rem;
+    flex: 1;
     overflow-y: auto;
 }
 
-.map-sidebar h3 {
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-    color: #4a5568;
-    border-bottom: 2px solid #667eea;
-    padding-bottom: 0.5rem;
-}
-
-.map-sidebar h4 {
-    font-size: 1rem;
-    margin: 1rem 0 0.5rem 0;
-    color: #4a5568;
-}
-
-.sidebar-content {
-    flex: 1;
+.tab-content.active {
+    display: block;
 }
 
 .map-wrapper {
@@ -357,73 +115,100 @@ footer p {
 #map {
     height: 100%;
     width: 100%;
-    margin-bottom: 0;
-    border: none;
 }
 
-.filter-stats {
-    margin-top: 0.5rem;
+/* Estilos de Formulário */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
     font-size: 0.85rem;
-    color: #718096;
 }
 
-.layer-selector {
-    margin-top: 1rem;
-}
-
-.layer-option {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-    cursor: pointer;
-    padding: 0.5rem;
+input, select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #cbd5e0;
     border-radius: 4px;
-    transition: background 0.2s;
-}
-
-.layer-option:hover {
-    background: #edf2f7;
-}
-
-.layer-option label {
-    margin-bottom: 0;
-    cursor: pointer;
-    font-weight: normal;
     font-size: 0.9rem;
 }
 
-.layer-option input[type="radio"] {
-    width: auto;
+/* Botões */
+.btn-convert, .btn-upload, .btn-undo, .btn-clear {
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
     cursor: pointer;
+    transition: transform 0.2s;
+    width: 100%;
+    color: white;
 }
 
-hr {
-    border: 0;
-    border-top: 1px solid #ddd;
-    margin: 1rem 0;
+.btn-convert { background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); }
+.btn-upload { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
+.btn-undo { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.btn-clear { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+
+.btn-convert:hover, .btn-upload:hover { transform: translateY(-2px); }
+
+/* Ficha do Ativo */
+.asset-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 4px solid #4a5568;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.btn-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.status-badge.planejado { background: #e2e8f0; color: #4a5568; }
+.status-badge.em_execucao { background: #feebc8; color: #9c4221; }
+.status-badge.concluido { background: #c6f6d5; color: #22543d; }
+
+/* Notificações */
+.clash-notification {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fed7d7;
+    color: #c53030;
+    padding: 10px 20px;
+    border-radius: 20px;
+    z-index: 1000;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    border: 1px solid #f56565;
+}
+
+/* Footer */
+footer {
+    background-color: #1a202c;
+    color: white;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    margin-top: 2rem;
 }
 
 @media (max-width: 768px) {
-    .map-layout {
-        flex-direction: column;
-        height: auto;
-    }
-    
-    .map-sidebar {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid #ddd;
-        max-height: 200px;
-    }
-    
-    .map-wrapper {
-        height: 400px;
-    }
+    .map-layout { flex-direction: column; height: auto; }
+    .map-sidebar { width: 100%; height: 300px; }
+    .map-wrapper { height: 400px; }
 }

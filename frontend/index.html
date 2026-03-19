@@ -4,29 +4,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini QGIS Online - Conversor de Coordenadas</title>
+    <title>GISBIM Online - Gestão de Ativos e Modelos 3D</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
     <!-- Leaflet Draw CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
+    <!-- BIM/3D Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 
 <body>
     <header>
-        <h1>🗺️ Mini QGIS Online</h1>
-        <p>Ferramenta GIS web para conversão de coordenadas e visualização de mapas</p>
+        <h1>🏗️ GISBIM Online</h1>
+        <p>Plataforma GIS-BIM para gestão de ativos, modelos 3D e cronograma 4D</p>
     </header>
 
     <main>
         <section class="map-container-section">
             <div class="map-layout">
                 <aside class="map-sidebar" id="sidebar">
-                    <h3>Filtro de Pontos</h3>
-                    <div class="sidebar-content">
+                    <div class="sidebar-tabs">
+                        <button class="tab-btn active" onclick="openTab('filterTab')">Filtros</button>
+                        <button class="tab-btn" onclick="openTab('bimTab')">BIM/3D</button>
+                        <button class="tab-btn" onclick="openTab('assetTab')">Ativo</button>
+                    </div>
+
+                    <div id="filterTab" class="tab-content active">
+                        <h3>Filtro de Pontos</h3>
                         <div class="form-group">
                             <label for="filterDescription">Filtrar por Descrição:</label>
                             <input type="text" id="filterDescription" placeholder="Digite a descrição..." oninput="filterPointsByDescription()">
@@ -51,156 +58,127 @@
                             </div>
                         </div>
                     </div>
+
+                    <div id="bimTab" class="tab-content">
+                        <h3>Modelos BIM & 3D</h3>
+                        <div class="form-group">
+                            <label for="bimFileInput">Upload Modelo (.glb/.ifc):</label>
+                            <input type="file" id="bimFileInput" accept=".glb,.ifc">
+                            <button onclick="uploadBIMModel()" class="btn-upload" style="margin-top: 5px;">Carregar Modelo</button>
+                        </div>
+                        <hr>
+                        <h4>Cronograma 4D</h4>
+                        <div class="form-group">
+                            <label for="timelineSlider">Evolução da Obra:</label>
+                            <input type="range" id="timelineSlider" min="0" max="100" value="100" oninput="updateTimeline(this.value)">
+                            <p id="timelineLabel">Data: Atual</p>
+                        </div>
+                        <hr>
+                        <h4>Nuvem de Pontos (LiDAR)</h4>
+                        <input type="file" id="lidarFileInput" accept=".las,.laz">
+                        <button onclick="uploadLidar()" class="btn-upload" style="margin-top: 5px;">Carregar LiDAR</button>
+                    </div>
+
+                    <div id="assetTab" class="tab-content">
+                        <h3>Ficha do Ativo</h3>
+                        <div id="assetDetails">
+                            <p class="hint">Selecione um ponto no mapa para ver os detalhes.</p>
+                        </div>
+                    </div>
                 </aside>
+                
                 <div class="map-wrapper">
                     <div id="map"></div>
+                    <div id="clash-alert" class="clash-notification" style="display:none;">
+                        ⚠️ Conflito Detectado!
+                    </div>
                 </div>
             </div>
         </section>
 
-        <section id="fileUploadSection" class="upload-section">
-            <h2>Upload de Dados Espaciais</h2>
-            <input type="file" id="fileInput" accept=".shp,.geojson,.json,.gpkg,.kml">
-            <button onclick="uploadFile()" class="btn-upload">Upload</button>
-            <div id="uploadResult" class="result-box"></div>
-        </section>
-
-        <section class="converter-section">
-            <h2>Conversor de Coordenadas</h2>
-            
-            <div class="form-group">
-                <label for="coordMode">Modo de Entrada:</label>
-                <select id="coordMode" onchange="toggleCoordInputs()">
-                    <option value="dd">Graus Decimais (DD)</option>
-                    <option value="dms">Graus Minutos Segundos (DMS)</option>
-                    <option value="utm">UTM</option>
-                </select>
+        <section class="bim-editor-section">
+            <h2>Adicionar Novo Ativo / Ponto</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="coordMode">Modo:</label>
+                    <select id="coordMode" onchange="toggleCoordInputs()">
+                        <option value="dd">Graus Decimais (DD)</option>
+                        <option value="utm">UTM</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="pointType">Tipo:</label>
+                    <select id="pointType">
+                        <option value="pilar">Pilar</option>
+                        <option value="viga">Viga</option>
+                        <option value="tubulacao">Tubulação</option>
+                        <option value="eletrica">Elétrica</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </div>
             </div>
-            
+
             <div id="ddInputs">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="x">Longitude (X):</label>
-                        <input type="number" id="x" placeholder="Ex: -55.5" step="0.000001">
+                        <input type="number" id="x" step="0.000001">
                     </div>
                     <div class="form-group">
                         <label for="y">Latitude (Y):</label>
-                        <input type="number" id="y" placeholder="Ex: -15.5" step="0.000001">
+                        <input type="number" id="y" step="0.000001">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="pointDesc">Descrição do Ponto:</label>
-                    <input type="text" id="pointDesc" placeholder="Ex: Ponto de controle 01">
-                </div>
-            </div>
-            
-            <div id="dmsInputs" style="display:none;">
-                <h4>Longitude (X)</h4>
-                <div class="form-row">
-                    <input type="number" id="xd" placeholder="G" style="width:60px;">
-                    <input type="number" id="xm" placeholder="M" style="width:60px;">
-                    <input type="number" id="xs" placeholder="S" style="width:80px;">
-                    <select id="xdir"><option value="E">E</option><option value="W" selected>W</option></select>
-                </div>
-                <h4>Latitude (Y)</h4>
-                <div class="form-row">
-                    <input type="number" id="yd" placeholder="G" style="width:60px;">
-                    <input type="number" id="ym" placeholder="M" style="width:60px;">
-                    <input type="number" id="ys" placeholder="S" style="width:80px;">
-                    <select id="ydir"><option value="N">N</option><option value="S" selected>S</option></select>
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="src">Sistema de Origem:</label>
-                    <select id="src">
-                        <option value="4326" selected>WGS84 (EPSG:4326)</option>
-                        <option value="4674">SIRGAS2000 (EPSG:4674)</option>
-                        <option value="31983">UTM 23S (EPSG:31983)</option>
-                    </select>
+                    <label for="pointDesc">Descrição:</label>
+                    <input type="text" id="pointDesc" placeholder="Ex: Pilar P1-A">
                 </div>
-
                 <div class="form-group">
-                    <label for="dst">Sistema de Destino:</label>
-                    <select id="dst">
-                        <option value="4326">WGS84 (EPSG:4326)</option>
-                        <option value="4674" selected>SIRGAS2000 (EPSG:4674)</option>
-                        <option value="31983">UTM 23S (EPSG:31983)</option>
-                    </select>
+                    <label for="assetManufacturer">Fabricante:</label>
+                    <input type="text" id="assetManufacturer" placeholder="Ex: Gerdau">
                 </div>
             </div>
 
-            <button id="convertBtn" onclick="convert()" class="btn-convert">Converter e Adicionar ao Mapa</button>
-
-            <div id="result" class="result-box"></div>
-        </section>
-    
-        <section id="exportSection" class="export-section">
-            <h2>Exportação e Configurações de Pontos</h2>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="exportFormat">Formato de Exportação:</label>
-                    <select id="exportFormat">
-                        <option value="txt">TXT</option>
-                        <option value="csv">CSV</option>
-                        <option value="kml">KML</option>
-                        <option value="dxf">DXF</option>
+                    <label for="assetInstallDate">Data de Execução:</label>
+                    <input type="date" id="assetInstallDate">
+                </div>
+                <div class="form-group">
+                    <label for="assetStatus">Status:</label>
+                    <select id="assetStatus">
+                        <option value="planejado">Planejado</option>
+                        <option value="em_execucao">Em Execução</option>
+                        <option value="concluido">Concluído</option>
                     </select>
                 </div>
-                <div class="form-group" style="display: flex; align-items: flex-end;">
-                    <button onclick="exportData()" class="btn-convert">Exportar Pontos</button>
-                </div>
             </div>
-            
-            <div class="filter-group">
-                <h3>Configurações de Exibição</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="pointType">Tipo de Ponto:</label>
-                        <select id="pointType">
-                            <option value="all">Todos</option>
-                            <option value="bordo">Bordo</option>
-                            <option value="manilha">Manilha</option>
-                            <option value="pe">Pé</option>
-                            <option value="crista">Crista</option>
-                            <option value="outros">Outros</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="pointColor">Cor:</label>
-                        <input type="color" id="pointColor" value="#ff0000" style="height: 45px;">
-                    </div>
-                </div>
-                <button onclick="applyFilters()" class="btn-convert">Aplicar Cor ao Tipo</button>
-            </div>
-            
-            <div class="polygon-group">
-                <h3>Ferramentas de Desenho</h3>
-                <div class="btn-grid">
-                    <button onclick="connectPoints()" class="btn-convert">Ligar Pontos</button>
-                    <button onclick="closePolygon()" class="btn-convert">Fechar Polígono</button>
-                    <button onclick="undoLastPoint()" class="btn-undo">Desfazer Último</button>
-                    <button onclick="clearMap()" class="btn-clear">Limpar Tudo</button>
-                </div>
-            </div>
+
+            <button onclick="convert()" class="btn-convert">Registrar Ativo no Mapa</button>
         </section>
 
+        <section class="tools-section">
+            <h2>Ferramentas e Exportação</h2>
+            <div class="btn-grid">
+                <button onclick="checkClashes()" class="btn-undo" style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);">Detectar Conflitos</button>
+                <button onclick="exportData()" class="btn-convert">Exportar Dados (BIM/GIS)</button>
+                <button onclick="clearMap()" class="btn-clear">Limpar Tudo</button>
+            </div>
+        </section>
     </main>
 
     <footer>
-        <p>Mini QGIS Online © 2024 | Desenvolvido com Flask, Leaflet e Pyproj</p>
+        <p>GISBIM Online © 2024 | Powered by Three.js & Leaflet</p>
     </footer>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- Leaflet Draw JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <!-- Turf.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
     <!-- Custom Scripts -->
     <script src="map.js"></script>
+    <script src="bim.js"></script>
     <script src="converter.js"></script>
     <script src="upload.js"></script>
 </body>

@@ -5,302 +5,130 @@ var map = L.map('map').setView([-14, -52], 4);
 var baseLayers = {
     "road": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution: '&copy; OpenStreetMap'
     }),
     "satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 19,
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
+        attribution: 'Esri'
     }),
     "3d": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
         maxZoom: 17,
-        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        attribution: 'OpenTopoMap'
     })
 };
 
-// Adicionar camada inicial
 baseLayers.road.addTo(map);
 
-// Função para mudar a camada de base
 function changeBaseLayer(layerKey) {
-    // Remover todas as camadas de base
-    Object.values(baseLayers).forEach(layer => {
-        if (map.hasLayer(layer)) {
-            map.removeLayer(layer);
-        }
-    });
-    
-    // Adicionar a nova camada
-    if (baseLayers[layerKey]) {
-        baseLayers[layerKey].addTo(map);
-    }
+    Object.values(baseLayers).forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+    if (baseLayers[layerKey]) baseLayers[layerKey].addTo(map);
 }
 
 // Variáveis globais
-var pointsList = []; // Lista para armazenar pontos coletados
-var polylines = []; // Lista para armazenar polylines
-var polygons = []; // Lista para armazenar polígonos
-
-// Estrutura para armazenar camadas de pontos por tipo
+var pointsList = [];
 var pointLayers = {
-    "bordo": L.layerGroup().addTo(map),
-    "manilha": L.layerGroup().addTo(map),
-    "pe": L.layerGroup().addTo(map),
-    "crista": L.layerGroup().addTo(map),
+    "pilar": L.layerGroup().addTo(map),
+    "viga": L.layerGroup().addTo(map),
+    "tubulacao": L.layerGroup().addTo(map),
+    "eletrica": L.layerGroup().addTo(map),
     "outros": L.layerGroup().addTo(map),
-    "ponto": L.layerGroup().addTo(map)
+    "importado": L.layerGroup().addTo(map)
 };
 
-// Mapeamento de cores iniciais por tipo
+// Cores por tipo BIM
 var typeColors = {
-    "bordo": "#ff0000",
-    "manilha": "#00ff00",
-    "pe": "#0000ff",
-    "crista": "#ffff00",
-    "outros": "#ff9900",
-    "ponto": "#000000"
+    "pilar": "#2d3748",
+    "viga": "#4a5568",
+    "tubulacao": "#3182ce",
+    "eletrica": "#ecc94b",
+    "outros": "#a0aec0",
+    "importado": "#9f7aea"
 };
 
-// Evento de clique no mapa para adicionar marcadores
 map.on('click', function(e) {
     var lat = e.latlng.lat;
     var lng = e.latlng.lng;
-    var type = document.getElementById('pointType') ? document.getElementById('pointType').value : 'ponto';
-    var color = document.getElementById('pointColor') ? document.getElementById('pointColor').value : typeColors[type];
-    var description = document.getElementById('pointDesc') ? document.getElementById('pointDesc').value : '';
     
-    addPointToMap(lat, lng, type, color, description);
+    // Preencher campos de coordenadas ao clicar
+    if(document.getElementById('x')) document.getElementById('x').value = lng.toFixed(6);
+    if(document.getElementById('y')) document.getElementById('y').value = lat.toFixed(6);
     
-    // Limpar campo de descrição após adicionar
-    if (document.getElementById('pointDesc')) {
-        document.getElementById('pointDesc').value = '';
-    }
+    // Limpar seleção de ativo ao clicar no vazio
+    if (typeof showAssetDetails === 'function') showAssetDetails(null);
 });
 
-/**
- * Adiciona um ponto ao mapa e à lista global
- */
-function addPointToMap(lat, lng, type, color, description) {
-    // Atualizar cor padrão
-    typeColors[type] = color;
-    
-    // Criar marcador circular com a cor escolhida
+function addPointToMap(lat, lng, type, color, description, extraData = {}) {
     var marker = L.circleMarker([lat, lng], {
-        radius: 8,
-        fillColor: color,
-        color: "#000",
-        weight: 1,
+        radius: 10,
+        fillColor: color || typeColors[type] || "#000",
+        color: "#fff",
+        weight: 2,
         opacity: 1,
-        fillOpacity: 0.8
-    }).bindPopup(`<strong>Tipo:</strong> ${type}<br><strong>Descrição:</strong> ${description || 'N/A'}<br><strong>Lat:</strong> ${lat.toFixed(6)}<br><strong>Lng:</strong> ${lng.toFixed(6)}`);
-    
-    // Armazenar descrição no marcador para facilitar o filtro
+        fillOpacity: 0.9
+    });
+
+    // Dados do Ativo (BIM)
+    const assetData = {
+        id: Date.now().toString(),
+        lat: lat,
+        lng: lng,
+        type: type,
+        description: description,
+        manufacturer: extraData.manufacturer || document.getElementById('assetManufacturer')?.value || '',
+        installDate: extraData.installDate || document.getElementById('assetInstallDate')?.value || new Date().toISOString().split('T')[0],
+        status: extraData.status || document.getElementById('assetStatus')?.value || 'planejado'
+    };
+
+    marker.assetData = assetData;
     marker.description = (description || '').toLowerCase();
+
+    marker.bindPopup(`<strong>${assetData.description}</strong><br>Status: ${assetData.status}`);
     
-    // Adicionar à camada correta e à lista de pontos
-    pointLayers[type].addLayer(marker);
-    pointsList.push({x: lng, y: lat, type: type, color: color, description: description || ''});
-    
+    marker.on('click', function(e) {
+        L.DomEvent.stopPropagation(e);
+        if (typeof showAssetDetails === 'function') showAssetDetails(this.assetData);
+    });
+
+    if (pointLayers[type]) {
+        pointLayers[type].addLayer(marker);
+    } else {
+        pointLayers["outros"].addLayer(marker);
+    }
+
+    pointsList.push({x: lng, y: lat, type: type, description: description, assetData: assetData});
     updatePointsCount();
-    console.log("Ponto adicionado:", type, color, description, {x: lng, y: lat});
 }
 
-/**
- * Filtra os pontos visíveis no mapa com base na descrição na aba lateral
- */
 function filterPointsByDescription() {
     var filterText = document.getElementById('filterDescription').value.toLowerCase();
     var visibleCount = 0;
     
     Object.keys(pointLayers).forEach(type => {
         pointLayers[type].eachLayer(function(layer) {
-            var desc = layer.description || '';
-            if (desc.includes(filterText)) {
-                if (!map.hasLayer(layer)) {
-                    pointLayers[type].addLayer(layer);
-                }
+            if ((layer.description || '').includes(filterText)) {
+                if (!map.hasLayer(layer)) pointLayers[type].addLayer(layer);
                 visibleCount++;
             } else {
                 pointLayers[type].removeLayer(layer);
             }
         });
     });
-    
     updatePointsCount(visibleCount);
 }
 
-/**
- * Atualiza o contador de pontos visíveis na aba lateral
- */
 function updatePointsCount(count) {
-    var totalVisible = 0;
-    if (count !== undefined) {
-        totalVisible = count;
-    } else {
-        Object.keys(pointLayers).forEach(type => {
-            totalVisible += pointLayers[type].getLayers().length;
-        });
+    var totalVisible = count !== undefined ? count : 0;
+    if (count === undefined) {
+        Object.keys(pointLayers).forEach(type => { totalVisible += pointLayers[type].getLayers().length; });
     }
-    
-    var countElement = document.getElementById('pointsCount');
-    if (countElement) {
-        countElement.innerText = `Pontos visíveis: ${totalVisible}`;
-    }
+    if (document.getElementById('pointsCount')) document.getElementById('pointsCount').innerText = `Ativos visíveis: ${totalVisible}`;
 }
 
-/**
- * Aplicar filtro de cores aos pontos de um tipo específico
- */
-function applyFilters() {
-    var type = document.getElementById('pointType').value;
-    var color = document.getElementById('pointColor').value;
-    
-    // Atualizar cor padrão para o tipo
-    typeColors[type] = color;
-    
-    // Atualizar marcadores existentes daquele tipo
-    pointLayers[type].eachLayer(function(layer) {
-        layer.setStyle({fillColor: color});
-    });
-    
-    // Atualizar cores na lista de pontos para exportação futura
-    pointsList.forEach(p => {
-        if (p.type === type) p.color = color;
-    });
-    
-    console.log(`Filtro aplicado: Tipo "${type}" agora é ${color}`);
-}
-
-/**
- * Conectar pontos de um tipo específico com uma polyline
- */
-function connectPoints() {
-    var type = document.getElementById('pointType').value;
-    var filteredPoints = pointsList.filter(p => p.type === type || type === 'all');
-    
-    if (filteredPoints.length < 2) {
-        alert(`Necessário ao menos 2 pontos do tipo "${type}" para ligar.`);
-        return;
-    }
-    
-    var latlngs = filteredPoints.map(p => [p.y, p.x]);
-    var color = document.getElementById('pointColor').value;
-    
-    var polyline = L.polyline(latlngs, {
-        color: color,
-        weight: 3,
-        opacity: 0.7,
-        dashArray: '5, 10'
-    }).addTo(map);
-    
-    polylines.push(polyline);
-    console.log(`Pontos do tipo "${type}" ligados com ${filteredPoints.length} pontos`);
-}
-
-/**
- * Fechar polígono (criar mancha) a partir de pontos de um tipo específico
- */
-function closePolygon() {
-    var type = document.getElementById('pointType').value;
-    var filteredPoints = pointsList.filter(p => p.type === type || type === 'all');
-    
-    if (filteredPoints.length < 3) {
-        alert(`Necessário ao menos 3 pontos do tipo "${type}" para fechar polígono.`);
-        return;
-    }
-    
-    var latlngs = filteredPoints.map(p => [p.y, p.x]);
-    var color = document.getElementById('pointColor').value;
-    
-    var polygon = L.polygon(latlngs, {
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.4,
-        weight: 2
-    }).addTo(map);
-    
-    polygons.push(polygon);
-    console.log(`Polígono (mancha) criado para o tipo "${type}" com ${filteredPoints.length} pontos`);
-}
-
-/**
- * Exportar dados em diferentes formatos
- */
-async function exportData() {
-    const format = document.getElementById('exportFormat').value;
-    
-    if (pointsList.length === 0) {
-        alert("Nenhum ponto para exportar. Clique no mapa para adicionar pontos.");
-        return;
-    }
-    
-    try {
-        const response = await fetch('/export_full', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({format: format, points: pointsList})
-        });
-        
-        const result = await response.json();
-        
-        if (result.url) {
-            window.location.href = result.url;
-            console.log(`Arquivo exportado em formato ${format}`);
-        } else {
-            alert(result.error || "Erro ao exportar");
-        }
-    } catch (error) {
-        alert(`Erro ao exportar: ${error.message}`);
-        console.error(error);
-    }
-}
-
-/**
- * Limpar todos os pontos, polylines e polígonos do mapa
- */
 function clearMap() {
-    // Limpar pontos
     pointsList = [];
-    Object.keys(pointLayers).forEach(type => {
-        pointLayers[type].clearLayers();
-    });
-    
-    // Limpar polylines
-    polylines.forEach(polyline => map.removeLayer(polyline));
-    polylines = [];
-    
-    // Limpar polígonos
-    polygons.forEach(polygon => map.removeLayer(polygon));
-    polygons = [];
-    
+    Object.keys(pointLayers).forEach(type => pointLayers[type].clearLayers());
     updatePointsCount();
-    console.log("Mapa limpo");
+    if (typeof showAssetDetails === 'function') showAssetDetails(null);
 }
 
-/**
- * Remover o último ponto adicionado
- */
-function undoLastPoint() {
-    if (pointsList.length === 0) {
-        alert("Nenhum ponto para remover.");
-        return;
-    }
-    
-    var lastPoint = pointsList.pop();
-    
-    // Remover o marcador da camada
-    var layerToRemove = null;
-    pointLayers[lastPoint.type].eachLayer(function(layer) {
-        if (layer.getLatLng().lat === lastPoint.y && layer.getLatLng().lng === lastPoint.x) {
-            layerToRemove = layer;
-        }
-    });
-    
-    if (layerToRemove) {
-        pointLayers[lastPoint.type].removeLayer(layerToRemove);
-    }
-    
-    updatePointsCount();
-    console.log(`Último ponto removido: ${lastPoint.type} em (${lastPoint.y}, ${lastPoint.x})`);
-}
-
-console.log("Map.js carregado com sucesso");
+console.log("Map.js (BIM Edition) carregado");
