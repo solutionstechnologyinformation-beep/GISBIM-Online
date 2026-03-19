@@ -14,28 +14,28 @@ from backend.exporters import export_to_kml, export_to_dxf
 # Carregar variáveis de ambiente
 load_dotenv()
 
-app = Flask(__name__, static_folder=\'../frontend\', static_url_path=\'\')
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
 
 # Configurações
-PORT = int(os.getenv(\'PORT\', 5000))
-HOST = os.getenv(\'HOST\', \'0.0.0.0\')
-FLASK_ENV = os.getenv(\'FLASK_ENV\', \'development\')
+PORT = int(os.getenv('PORT', 5000))
+HOST = os.getenv('HOST', '0.0.0.0')
+FLASK_ENV = os.getenv('FLASK_ENV', 'development')
 
 
-@app.route(\'/\')
+@app.route('/')
 def index():
     """Serve o arquivo index.html do frontend."""
-    return send_from_directory(app.static_folder, \'index.html\')
+    return send_from_directory(app.static_folder, 'index.html')
 
 
-@app.route(\'/convert\', methods=[\'POST\'])
+@app.route('/convert', methods=['POST'])
 def convert_single():
     """Converte coordenadas entre diferentes sistemas de referência EPSG."""
     try:
         # Validar se o JSON foi recebido
         if not request.json:
-            return jsonify({\'error\': \'Nenhum dado JSON fornecido\'}), 400
+            return jsonify({'error': 'Nenhum dado JSON fornecido'}), 400
 
         # Extrair dados
         data = request.json
@@ -46,8 +46,8 @@ def convert_single():
             if field not in data:
                 return jsonify({"error": f"Campo obrigatório faltando: {field}"}), 400
 
-        input_format = data.get("input_format", "dd") # \'dd\' para Graus Decimais, \'dms\' para GMS
-        output_format = data.get("output_format", "dd") # \'dd\' para Graus Decimais, \'dms\' para GMS
+        input_format = data.get("input_format", "dd") # 'dd' para Graus Decimais, 'dms' para GMS
+        output_format = data.get("output_format", "dd") # 'dd' para Graus Decimais, 'dms' para GMS
 
         x, y = None, None
 
@@ -75,14 +75,14 @@ def convert_single():
             except (ValueError, TypeError, KeyError):
                 return jsonify({"error": "Componentes de Graus, Minutos, Segundos (DMS) inválidos ou faltando"}), 400
         else:
-            return jsonify({"error": "Formato de entrada inválido. Use \'dd\' ou \'dms\'."}), 400
+            return jsonify({"error": "Formato de entrada inválido. Use 'dd' ou 'dms'."}), 400
 
         src = str(data["src"]).strip()
         dst = str(data["dst"]).strip()
 
         # Validar se src e dst não estão vazios
         if not src or not dst:
-            return jsonify({\'error\': \'Sistemas de referência (src e dst) não podem estar vazios\'}), 400
+            return jsonify({'error': 'Sistemas de referência (src e dst) não podem estar vazios'}), 400
 
         # Validar se src e dst são iguais
         if src == dst:
@@ -141,19 +141,19 @@ def convert_single():
             })
 
     except Exception as e:
-        return jsonify({\'error\': f\'Erro interno do servidor: {str(e)}\'}), 500
+        return jsonify({'error': f'Erro interno do servidor: {str(e)}'}), 500
 
 
-@app.route(\'/convert_file\', methods=[\'POST\'])
+@app.route('/convert_file', methods=['POST'])
 def convert_file():
     try:
-        if \'file\' not in request.files:
-            return jsonify({\'error\': \'Nenhum arquivo enviado\'}), 400
+        if 'file' not in request.files:
+            return jsonify({'error': 'Nenhum arquivo enviado'}), 400
 
         file = request.files["file"]
         src = request.form.get("src")
         dst = request.form.get("dst")
-        input_file_format = request.form.get("input_file_format", "xy") # \'xy\' ou \'pnec\'
+        input_file_format = request.form.get("input_file_format", "xy") # 'xy' ou 'pnec'
 
         if not file or not src or not dst:
             return jsonify({"error": "Arquivo, sistema de origem ou destino não fornecidos"}), 400
@@ -165,9 +165,9 @@ def convert_file():
         
         try:
             # Tentar ler o arquivo com pandas, inferindo o separador e sem cabeçalho inicialmente
-            df = pd.read_csv(io.StringIO(file_content), sep=None, engine=\'python\', header=None)
+            df = pd.read_csv(io.StringIO(file_content), sep=None, engine='python', header=None)
         except Exception as e:
-            return jsonify({\'error\': f\'Erro ao ler o arquivo: {str(e)}. Verifique o formato (CSV/TXT).\'}), 400
+            return jsonify({'error': f'Erro ao ler o arquivo: {str(e)}. Verifique o formato (CSV/TXT).'}), 400
 
         results = []
         try:
@@ -177,13 +177,13 @@ def convert_file():
                 always_xy=True
             )
         except Exception as e:
-            return jsonify({\'error\': f\'Sistema de referência inválido: {str(e)}\'}), 400
+            return jsonify({'error': f'Sistema de referência inválido: {str(e)}'}), 400
 
         if input_file_format == "pnec": # Ponto, N, E, Cota, Descrição
             # Heurística para detectar cabeçalho: se a primeira linha não for numérica nas colunas de coord
             start_row = 0
             # Verifica se as colunas N (índice 1) e E (índice 2) da primeira linha não são numéricas
-            if df.shape[1] > 2 and (pd.to_numeric(df.iloc[0, 1], errors=\'coerce\').isna().all() or pd.to_numeric(df.iloc[0, 2], errors=\'coerce\').isna().all()):
+            if df.shape[1] > 2 and (pd.to_numeric(df.iloc[0, 1], errors='coerce').isna().all() or pd.to_numeric(df.iloc[0, 2], errors='coerce').isna().all()):
                  start_row = 1
 
             for index in range(start_row, len(df)):
@@ -215,7 +215,7 @@ def convert_file():
             # Heurística para detectar cabeçalho
             start_row = 0
             # Verifica se as colunas X (índice 0) e Y (índice 1) da primeira linha não são numéricas
-            if df.shape[1] > 1 and (pd.to_numeric(df.iloc[0, 0], errors=\'coerce\').isna().all() or pd.to_numeric(df.iloc[0, 1], errors=\'coerce\').isna().all()):
+            if df.shape[1] > 1 and (pd.to_numeric(df.iloc[0, 0], errors='coerce').isna().all() or pd.to_numeric(df.iloc[0, 1], errors='coerce').isna().all()):
                  start_row = 1
 
             for index in range(start_row, len(df)):
@@ -233,50 +233,50 @@ def convert_file():
                     continue # Ignorar linhas com erro de transformação
 
         if not results:
-            return jsonify({\'error\': \'Nenhuma coordenada válida encontrada ou convertida no arquivo\'}), 400
+            return jsonify({'error': 'Nenhuma coordenada válida encontrada ou convertida no arquivo'}), 400
 
         return jsonify(results)
 
     except Exception as e:
-        return jsonify({\'error\': f\'Erro interno do servidor ao processar arquivo: {str(e)}\'}), 500
+        return jsonify({'error': f'Erro interno do servidor ao processar arquivo: {str(e)}'}), 500
 
-@app.route(\'/upload_spatial_file\', methods=[\'POST\'])
+@app.route('/upload_spatial_file', methods=['POST'])
 def upload_spatial_file():
     try:
-        if \'file\' not in request.files:
-            return jsonify({\'error\': \'Nenhum arquivo enviado\'}), 400
+        if 'file' not in request.files:
+            return jsonify({'error': 'Nenhum arquivo enviado'}), 400
 
-        file = request.files[\'file\']
+        file = request.files['file']
         if not allowed_spatial_file(file.filename):
-            return jsonify({\'error\': \'Tipo de arquivo não permitido. Apenas KMZ, KML, SHP, GeoJSON, GPKG.\'}), 400
+            return jsonify({'error': 'Tipo de arquivo não permitido. Apenas KMZ, KML, SHP, GeoJSON, GPKG.'}), 400
 
         result = process_upload(file)
 
-        if \'error\' in result:
+        if 'error' in result:
             return jsonify(result), 400
         
         return jsonify(result)
 
     except Exception as e:
-        return jsonify({\'error\': f\'Erro interno do servidor ao processar arquivo espacial: {str(e)}\'}), 500
+        return jsonify({'error': f'Erro interno do servidor ao processar arquivo espacial: {str(e)}'}), 500
 
-@app.route(\'/health\', methods=[\'GET\'])
+@app.route('/health', methods=['GET'])
 def health():
     """Endpoint de verificação de saúde da API."""
-    return jsonify({\'status\': \'ok\', \'environment\': FLASK_ENV})
+    return jsonify({'status': 'ok', 'environment': FLASK_ENV})
 
 
 @app.errorhandler(404)
 def not_found(error):
     """Tratador para erros 404."""
-    return jsonify({\'error\': \'Endpoint não encontrado\'}), 404
+    return jsonify({'error': 'Endpoint não encontrado'}), 404
 
-@app.route(\"/epsg_codes\", methods=[\"GET\"])
+@app.route("/epsg_codes", methods=["GET"])
 def get_epsg_codes():
     """Retorna os códigos EPSG disponíveis."""
     return jsonify(EPSG_CODES)
 
-@app.route(\"/export_kml\", methods=[\"POST\"])
+@app.route("/export_kml", methods=["POST"])
 def export_kml_route():
     try:
         data = request.json.get("data")
@@ -288,7 +288,7 @@ def export_kml_route():
     except Exception as e:
         return jsonify({"error": f"Erro ao exportar KML: {str(e)}"}), 500
 
-@app.route(\"/export_dxf\", methods=[\"POST\"])
+@app.route("/export_dxf", methods=["POST"])
 def export_dxf_route():
     try:
         data = request.json.get("data")
@@ -298,11 +298,13 @@ def export_dxf_route():
         dxf_data = export_to_dxf(data, input_file_format)
         return Response(dxf_data, mimetype="application/dxf", headers={"Content-disposition": "attachment; filename=coordenadas_convertidas.dxf"})
     except Exception as e:
-        return jsonify({"error": f"Erro ao exportar DXF: {str(e)}"}), 500app.errorhandler(500)
+        return jsonify({"error": f"Erro ao exportar DXF: {str(e)}"}), 500
+
+@app.errorhandler(500)
 def internal_error(error):
     """Tratador para erros 500."""
-    return jsonify({\'error\': \'Erro interno do servidor\'}), 500
+    return jsonify({'error': 'Erro interno do servidor'}), 500
 
 
 if __name__ == "__main__":
-    app.run(host=HOST, port=PORT, debug=(FLASK_ENV == \'development\'))
+    app.run(host=HOST, port=PORT, debug=(FLASK_ENV == 'development'))

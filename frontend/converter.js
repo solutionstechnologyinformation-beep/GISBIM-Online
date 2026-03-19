@@ -436,3 +436,62 @@ function dmsToDd(degrees, minutes, seconds, direction) {
     }
     return dd;
 }
+
+async function viewSpatialFile() {
+    const fileInput = document.getElementById("spatialFileUpload");
+    const resultDiv = document.getElementById("spatialFileResult");
+
+    if (!fileInput.files.length) {
+        showError('Por favor, selecione um arquivo espacial para visualizar.', resultDiv);
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    showLoading(resultDiv);
+
+    try {
+        const response = await fetch(`${API_URL}/upload_spatial_file`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            showError(errorData.error || `Erro ${response.status}: ${response.statusText}`, resultDiv);
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+            showError(data.error, resultDiv);
+            return;
+        }
+
+        if (data.features && data.features.length > 0) {
+            if (typeof clearMarkers === 'function') {
+                clearMarkers();
+            }
+            
+            data.features.forEach(feature => {
+                if (feature.type === 'Point') {
+                    const [lon, lat] = feature.coordinates;
+                    if (typeof addSpatialMarker === 'function') {
+                        addSpatialMarker(lat, lon, 'Ponto do Arquivo Espacial');
+                    } else if (typeof addMarker === 'function') {
+                        addMarker(lat, lon, 'Ponto do Arquivo Espacial', 'purple', 'spatial');
+                    }
+                }
+            });
+            
+            resultDiv.innerHTML = `<p style="color: green;">Visualização concluída! ${data.features.length} pontos adicionados ao mapa.</p>`;
+        } else {
+            showError('Nenhuma geometria válida encontrada no arquivo para visualização.', resultDiv);
+        }
+
+    } catch (error) {
+        showError(`Erro de conexão ao processar arquivo espacial: ${error.message}`, resultDiv);
+    }
+}
