@@ -9,6 +9,8 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -26,18 +28,56 @@
             <div id="map"></div>
         </section>
 
+        <section id="fileUploadSection" class="upload-section">
+            <h2>Upload de Dados Espaciais</h2>
+            <input type="file" id="fileInput" accept=".shp,.geojson,.json,.gpkg,.kml">
+            <button onclick="uploadFile()" class="btn-upload">Upload</button>
+            <div id="uploadResult" class="result-box"></div>
+        </section>
         <section class="converter-section">
             <h2>Conversor de Coordenadas</h2>
             
+            
             <div class="form-group">
-                <label for="x">Coordenada X (Longitude):</label>
-                <input type="number" id="x" placeholder="Ex: -55.5" step="0.000001">
+                <label for="coordMode">Modo de Entrada:</label>
+                <select id="coordMode" onchange="toggleCoordInputs()">
+                    <option value="dd">Graus Decimais (DD)</option>
+                    <option value="dms">Graus Minutos Segundos (DMS)</option>
+                    <option value="utm">UTM</option>
+                </select>
             </div>
+            
+            <div id="ddInputs">
+                <div class="form-group">
+                    <label for="x">Longitude (X):</label>
+                    <input type="number" id="x" placeholder="Ex: -55.5" step="0.000001">
+                </div>
+                <div class="form-group">
+                    <label for="y">Latitude (Y):</label>
+                    <input type="number" id="y" placeholder="Ex: -15.5" step="0.000001">
+                </div>
+            </div>
+            
+            <div id="dmsInputs" style="display:none;">
+                <h4>Longitude (X)</h4>
+                <div class="form-row">
+                    <input type="number" id="xd" placeholder="G" style="width:60px;">
+                    <input type="number" id="xm" placeholder="M" style="width:60px;">
+                    <input type="number" id="xs" placeholder="S" style="width:80px;">
+                    <select id="xdir"><option value="E">E</option><option value="W">W</option></select>
+                </div>
+                <h4>Latitude (Y)</h4>
+                <div class="form-row">
+                    <input type="number" id="yd" placeholder="G" style="width:60px;">
+                    <input type="number" id="ym" placeholder="M" style="width:60px;">
+                    <input type="number" id="ys" placeholder="S" style="width:80px;">
+                    <select id="ydir"><option value="N">N</option><option value="S">S</option></select>
+                </div>
+            </div>
+<!-- Removido antigo input -->
+                
 
-            <div class="form-group">
-                <label for="y">Coordenada Y (Latitude):</label>
-                <input type="number" id="y" placeholder="Ex: -15.5" step="0.000001">
-            </div>
+            
 
             <div class="form-row">
                 <div class="form-group">
@@ -65,6 +105,44 @@
 
             <div id="result" class="result-box"></div>
         </section>
+    
+        <section id="exportSection" class="export-section">
+            <h2>Exportação e Filtros</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="exportFormat">Formato de Exportação:</label>
+                    <select id="exportFormat">
+                        <option value="txt">TXT</option>
+                        <option value="csv">CSV</option>
+                        <option value="kml">KML</option>
+                        <option value="dxf">DXF</option>
+                    </select>
+                </div>
+                <button onclick="exportData()" class="btn-convert">Exportar Pontos</button>
+            </div>
+            
+            <div class="filter-group">
+                <h3>Filtro de Pontos</h3>
+                <label for="pointType">Tipo de Ponto:</label>
+                <select id="pointType">
+                    <option value="all">Todos</option>
+                    <option value="bordo">Bordo</option>
+                    <option value="manilha">Manilha</option>
+                    <option value="pe">Pé</option>
+                    <option value="crista">Crista</option>
+                </select>
+                <label for="pointColor">Cor:</label>
+                <input type="color" id="pointColor" value="#ff0000">
+                <button onclick="applyFilters()" class="btn-convert">Aplicar Filtro/Cor</button>
+            </div>
+            
+            <div class="polygon-group">
+                <h3>Ferramentas de Desenho</h3>
+                <button onclick="connectPoints()" class="btn-convert">Ligar Pontos</button>
+                <button onclick="closePolygon()" class="btn-convert">Fechar Polígono (Mancha)</button>
+            </div>
+        </section>
+
     </main>
 
     <footer>
@@ -74,6 +152,10 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- Leaflet Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <!-- Turf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
     <!-- Custom Scripts -->
     <script src="map.js"></script>
     <script src="converter.js"></script>

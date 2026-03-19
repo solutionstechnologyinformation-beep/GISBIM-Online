@@ -105,3 +105,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function toggleCoordInputs() {
+    const mode = document.getElementById('coordMode').value;
+    document.getElementById('ddInputs').style.display = (mode === 'dd' || mode === 'utm') ? 'block' : 'none';
+    document.getElementById('dmsInputs').style.display = (mode === 'dms') ? 'block' : 'none';
+    
+    if (mode === 'utm') {
+        document.querySelector('label[for="x"]').innerText = "Easting (X):";
+        document.querySelector('label[for="y"]').innerText = "Northing (Y):";
+    } else {
+        document.querySelector('label[for="x"]').innerText = "Longitude (X):";
+        document.querySelector('label[for="y"]').innerText = "Latitude (Y):";
+    }
+}
+
+function toggleCoordInputs() {
+    const mode = document.getElementById('coordMode').value;
+    document.getElementById('ddInputs').style.display = (mode === 'dd' || mode === 'utm') ? 'block' : 'none';
+    document.getElementById('dmsInputs').style.display = (mode === 'dms') ? 'block' : 'none';
+    
+    if (mode === 'utm') {
+        document.querySelector('label[for="x"]').innerText = "Easting (X):";
+        document.querySelector('label[for="y"]').innerText = "Northing (Y):";
+    } else {
+        document.querySelector('label[for="x"]').innerText = "Longitude (X):";
+        document.querySelector('label[for="y"]').innerText = "Latitude (Y):";
+    }
+}

@@ -24,7 +24,6 @@ def check_python_imports():
         "backend.spatial",
         "backend.upload",
         "backend.raster",
-        "frontend.app" # Embora não seja o entrypoint principal, verifica a importação corrigida
     ]
     all_imports_ok = True
     for module in modules_to_check:

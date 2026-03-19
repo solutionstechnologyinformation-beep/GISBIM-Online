@@ -12,7 +12,7 @@ services:
       - "5432:5432"
 
   geoserver:
-    build: ./geoserver
+    image: geoserver/geoserver:2.24.1
     ports:
       - "8080:8080"
     depends_on:

@@ -150,7 +150,7 @@ Para adicionar mais sistemas, edite o arquivo `frontend/index.html` e adicione n
 Mini-QGIS-Online/
 ├── backend/
 │   ├── app.py              # Aplicação Flask principal
-│   ├── converter.py        # Módulo de conversão (utilitário)
+│   ├── spatial.py          # Módulo de conversão (utilitário)
 │   └── requirements.txt    # Dependências Python
 ├── frontend/
 │   ├── index.html          # Página principal
