@@ -1,10 +1,16 @@
 """
 Módulo de conversão de coordenadas geográficas.
 Suporta conversão entre DD (Graus Decimais), DMS (Graus Minutos Segundos) e UTM.
+Sistemas: SIRGAS2000, SAD69, WGS84
+Fusos UTM: 19-25 (Norte e Sul)
 """
 
-from pyproj import Transformer
+from pyproj import Transformer, CRS
 import math
+try:
+    from .epsg_codes import get_epsg_code, GEOGRAPHIC_SYSTEMS, validate_epsg_code
+except ImportError:
+    from epsg_codes import get_epsg_code, GEOGRAPHIC_SYSTEMS, validate_epsg_code
 
 # Constantes UTM
 WGS84_SEMI_MAJOR_AXIS = 6378137.0  # metros
@@ -15,7 +21,18 @@ FALSE_NORTHING = 10000000.0
 
 
 def dms_to_dd(degrees, minutes, seconds, direction):
-    """Converte Graus, Minutos, Segundos (DMS) para Graus Decimais (DD)."""
+    """
+    Converte Graus, Minutos, Segundos (DMS) para Graus Decimais (DD).
+    
+    Args:
+        degrees (float): Graus
+        minutes (float): Minutos
+        seconds (float): Segundos
+        direction (str): Direção (N, S, E, W)
+    
+    Returns:
+        float: Coordenada em Graus Decimais
+    """
     dd = float(degrees) + float(minutes)/60 + float(seconds)/(60*60)
     if direction in ("S", "W", "s", "w"):
         dd *= -1
@@ -23,7 +40,15 @@ def dms_to_dd(degrees, minutes, seconds, direction):
 
 
 def dd_to_dms(dd):
-    """Converte Graus Decimais (DD) para Graus, Minutos, Segundos (DMS)."""
+    """
+    Converte Graus Decimais (DD) para Graus, Minutos, Segundos (DMS).
+    
+    Args:
+        dd (float): Coordenada em Graus Decimais
+    
+    Returns:
+        tuple: (degrees, minutes, seconds, is_negative)
+    """
     is_negative = dd < 0
     dd = abs(dd)
     degrees = int(dd)
@@ -35,7 +60,13 @@ def dd_to_dms(dd):
 def dd_to_utm(latitude, longitude):
     """
     Converte coordenadas em Graus Decimais (DD) para UTM.
-    Retorna: (zone, easting, northing, hemisphere)
+    
+    Args:
+        latitude (float): Latitude em Graus Decimais
+        longitude (float): Longitude em Graus Decimais
+    
+    Returns:
+        tuple: (zone, easting, northing, hemisphere)
     """
     # Calcular zona UTM
     zone = int((longitude + 180) / 6) + 1
@@ -82,7 +113,15 @@ def dd_to_utm(latitude, longitude):
 def utm_to_dd(zone, easting, northing, hemisphere="N"):
     """
     Converte coordenadas UTM para Graus Decimais (DD).
-    Retorna: (latitude, longitude)
+    
+    Args:
+        zone (int): Zona UTM
+        easting (float): Coordenada Easting (X)
+        northing (float): Coordenada Northing (Y)
+        hemisphere (str): Hemisfério (N ou S)
+    
+    Returns:
+        tuple: (latitude, longitude)
     """
     # Ajustar northing para hemisfério sul
     if hemisphere in ("S", "s"):
@@ -134,33 +173,123 @@ def utm_to_dd(zone, easting, northing, hemisphere="N"):
 
 
 def convert(x, y, src_epsg, dst_epsg):
-    """Converte uma coordenada de um sistema EPSG para outro."""
-    transformer = Transformer.from_crs(f"EPSG:{src_epsg}", f"EPSG:{dst_epsg}", always_xy=True)
-    new_x, new_y = transformer.transform(x, y)
-    return new_x, new_y
+    """
+    Converte uma coordenada de um sistema EPSG para outro.
+    
+    Args:
+        x (float): Coordenada X
+        y (float): Coordenada Y
+        src_epsg (str): Código EPSG de origem
+        dst_epsg (str): Código EPSG de destino
+    
+    Returns:
+        tuple: (new_x, new_y)
+    
+    Raises:
+        ValueError: Se os códigos EPSG forem inválidos
+    """
+    if not validate_epsg_code(src_epsg) or not validate_epsg_code(dst_epsg):
+        raise ValueError("Código EPSG inválido")
+    
+    try:
+        transformer = Transformer.from_crs(
+            f"EPSG:{src_epsg}",
+            f"EPSG:{dst_epsg}",
+            always_xy=True
+        )
+        new_x, new_y = transformer.transform(x, y)
+        return new_x, new_y
+    except Exception as e:
+        raise ValueError(f"Erro ao transformar coordenadas: {str(e)}")
 
 
-def format_dms(latitude, longitude):
-    """Formata coordenadas DD para string DMS legível."""
-    lat_deg, lat_min, lat_sec, lat_neg = dd_to_dms(latitude)
-    lon_deg, lon_min, lon_sec, lon_neg = dd_to_dms(longitude)
+def convert_between_systems(x, y, src_system, src_zone, dst_system, dst_zone):
+    """
+    Converte coordenadas entre diferentes sistemas de referência e fusos UTM.
     
-    lat_dir = "S" if lat_neg else "N"
-    lon_dir = "W" if lon_neg else "E"
+    Args:
+        x (float): Coordenada X
+        y (float): Coordenada Y
+        src_system (str): Sistema de origem (SIRGAS2000, SAD69, WGS84)
+        src_zone (str): Zona UTM de origem (ex: "19S", "20N") ou None para geográficas
+        dst_system (str): Sistema de destino
+        dst_zone (str): Zona UTM de destino ou None para geográficas
     
-    lat_str = f"{lat_deg}° {lat_min}' {lat_sec:.2f}\" {lat_dir}"
-    lon_str = f"{lon_deg}° {lon_min}' {lon_sec:.2f}\" {lon_dir}"
+    Returns:
+        dict: Resultado da conversão com coordenadas e metadados
+    """
+    try:
+        # Obter códigos EPSG
+        src_epsg = get_epsg_code(src_system, src_zone)
+        dst_epsg = get_epsg_code(dst_system, dst_zone)
+        
+        if not src_epsg or not dst_epsg:
+            raise ValueError("Sistema ou zona UTM inválido")
+        
+        # Realizar conversão
+        new_x, new_y = convert(x, y, src_epsg, dst_epsg)
+        
+        return {
+            'x': round(new_x, 6),
+            'y': round(new_y, 6),
+            'src_system': src_system,
+            'src_zone': src_zone,
+            'src_epsg': src_epsg,
+            'dst_system': dst_system,
+            'dst_zone': dst_zone,
+            'dst_epsg': dst_epsg,
+            'success': True
+        }
+    except Exception as e:
+        return {
+            'error': str(e),
+            'success': False
+        }
+
+
+def format_dms(degrees, minutes, seconds, direction):
+    """
+    Formata coordenadas DMS para string legível.
     
-    return lat_str, lon_str
+    Args:
+        degrees (int): Graus
+        minutes (int): Minutos
+        seconds (float): Segundos
+        direction (str): Direção (N, S, E, W)
+    
+    Returns:
+        str: String formatada
+    """
+    return f"{degrees}° {minutes}' {seconds:.2f}\" {direction}"
 
 
 def format_utm(zone, easting, northing, hemisphere):
-    """Formata coordenadas UTM para string legível."""
+    """
+    Formata coordenadas UTM para string legível.
+    
+    Args:
+        zone (int): Zona UTM
+        easting (float): Easting
+        northing (float): Northing
+        hemisphere (str): Hemisfério (N ou S)
+    
+    Returns:
+        str: String formatada
+    """
     return f"{zone}{hemisphere} {easting:.2f}m E {northing:.2f}m N"
 
 
 def validate_dd(latitude, longitude):
-    """Valida coordenadas em Graus Decimais."""
+    """
+    Valida coordenadas em Graus Decimais.
+    
+    Args:
+        latitude (float): Latitude
+        longitude (float): Longitude
+    
+    Returns:
+        tuple: (is_valid, message)
+    """
     if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
         return False, "Latitude e Longitude devem ser números"
     
@@ -174,7 +303,17 @@ def validate_dd(latitude, longitude):
 
 
 def validate_utm(zone, easting, northing):
-    """Valida coordenadas UTM."""
+    """
+    Valida coordenadas UTM.
+    
+    Args:
+        zone (int): Zona UTM
+        easting (float): Easting
+        northing (float): Northing
+    
+    Returns:
+        tuple: (is_valid, message)
+    """
     if not isinstance(zone, int) or zone < 1 or zone > 60:
         return False, "Zona UTM deve estar entre 1 e 60"
     
@@ -185,3 +324,44 @@ def validate_utm(zone, easting, northing):
         return False, "Northing deve estar entre 0 e 10000000"
     
     return True, "Coordenadas UTM válidas"
+
+
+def validate_system(system):
+    """
+    Valida se um sistema de referência é suportado.
+    
+    Args:
+        system (str): Sistema de referência
+    
+    Returns:
+        bool: True se válido, False caso contrário
+    """
+    return system in GEOGRAPHIC_SYSTEMS
+
+
+def validate_utm_zone(zone_str):
+    """
+    Valida se uma zona UTM é válida.
+    
+    Args:
+        zone_str (str): Zona UTM (ex: "19S", "20N")
+    
+    Returns:
+        tuple: (is_valid, zone_number, hemisphere)
+    """
+    if not isinstance(zone_str, str) or len(zone_str) < 2:
+        return False, None, None
+    
+    try:
+        zone_num = int(zone_str[:-1])
+        hemisphere = zone_str[-1].upper()
+        
+        if zone_num < 19 or zone_num > 25:
+            return False, None, None
+        
+        if hemisphere not in ("N", "S"):
+            return False, None, None
+        
+        return True, zone_num, hemisphere
+    except (ValueError, IndexError):
+        return False, None, None

@@ -9,14 +9,18 @@ try:
     from .upload_simple import process_upload
     from .spatial import (
         dms_to_dd, dd_to_dms, dd_to_utm, utm_to_dd,
-        format_dms, format_utm, validate_dd, validate_utm
+        format_dms, format_utm, validate_dd, validate_utm,
+        convert, convert_between_systems, validate_system, validate_utm_zone
     )
+    from .epsg_codes import get_epsg_code, get_all_systems, get_all_zones, GEOGRAPHIC_SYSTEMS
 except ImportError:
     from upload_simple import process_upload
     from spatial import (
         dms_to_dd, dd_to_dms, dd_to_utm, utm_to_dd,
-        format_dms, format_utm, validate_dd, validate_utm
+        format_dms, format_utm, validate_dd, validate_utm,
+        convert, convert_between_systems, validate_system, validate_utm_zone
     )
+    from epsg_codes import get_epsg_code, get_all_systems, get_all_zones, GEOGRAPHIC_SYSTEMS
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -40,14 +44,66 @@ def index():
 def health():
     """Health check endpoint."""
     return jsonify({
-        'message': 'GISBIM Online está funcionando',
+        'message': 'Conversor de Coordenadas Online está funcionando',
         'status': 'healthy',
-        'version': '2.0.0'
+        'version': '3.0.0'
     }), 200
 
 
+@app.route('/api/systems', methods=['GET'])
+def get_systems():
+    """Retorna lista de sistemas de referência disponíveis."""
+    try:
+        systems = get_all_systems()
+        return jsonify({
+            'systems': systems,
+            'count': len(systems)
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/zones', methods=['GET'])
+def get_zones():
+    """Retorna lista de zonas UTM disponíveis."""
+    try:
+        hemisphere = request.args.get('hemisphere', 'Sul')
+        zones = get_all_zones(hemisphere)
+        return jsonify({
+            'hemisphere': hemisphere,
+            'zones': zones,
+            'count': len(zones)
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/epsg-code', methods=['GET'])
+def get_epsg():
+    """Retorna o código EPSG para um sistema e zona."""
+    try:
+        system = request.args.get('system')
+        zone = request.args.get('zone')
+        
+        if not system:
+            return jsonify({'error': 'Sistema de referência obrigatório'}), 400
+        
+        epsg = get_epsg_code(system, zone)
+        
+        if not epsg:
+            return jsonify({'error': 'Sistema ou zona inválido'}), 400
+        
+        return jsonify({
+            'system': system,
+            'zone': zone,
+            'epsg': epsg
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/convert', methods=['POST'])
-def convert():
+def convert_coordinates():
     """Converte coordenadas entre diferentes sistemas de referência EPSG."""
     try:
         # Validar se o JSON foi recebido
@@ -102,12 +158,62 @@ def convert():
             return jsonify({'error': f'Erro ao transformar coordenadas: {str(e)}'}), 400
 
         return jsonify({
-            'x': new_x,
-            'y': new_y,
+            'x': round(new_x, 6),
+            'y': round(new_y, 6),
             'src': src,
             'dst': dst
-        })
+        }), 200
 
+    except Exception as e:
+        return jsonify({'error': f'Erro ao processar requisição: {str(e)}'}), 500
+
+
+@app.route('/convert/system', methods=['POST'])
+def convert_between_systems_endpoint():
+    """Converte coordenadas entre sistemas de referência e fusos UTM."""
+    try:
+        if not request.json:
+            return jsonify({'error': 'Nenhum dado JSON fornecido'}), 400
+        
+        data = request.json
+        required_fields = ['x', 'y', 'src_system', 'dst_system']
+        
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Campo obrigatório faltando: {field}'}), 400
+        
+        x = float(data['x'])
+        y = float(data['y'])
+        src_system = str(data['src_system']).strip()
+        dst_system = str(data['dst_system']).strip()
+        src_zone = data.get('src_zone')
+        dst_zone = data.get('dst_zone')
+        
+        # Validar sistemas
+        if not validate_system(src_system) or not validate_system(dst_system):
+            return jsonify({'error': 'Sistema de referência inválido'}), 400
+        
+        # Validar zonas se fornecidas
+        if src_zone:
+            valid, _, _ = validate_utm_zone(src_zone)
+            if not valid:
+                return jsonify({'error': f'Zona UTM de origem inválida: {src_zone}'}), 400
+        
+        if dst_zone:
+            valid, _, _ = validate_utm_zone(dst_zone)
+            if not valid:
+                return jsonify({'error': f'Zona UTM de destino inválida: {dst_zone}'}), 400
+        
+        # Realizar conversão
+        result = convert_between_systems(x, y, src_system, src_zone, dst_system, dst_zone)
+        
+        if not result['success']:
+            return jsonify({'error': result['error']}), 400
+        
+        return jsonify(result), 200
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': f'Erro ao processar requisição: {str(e)}'}), 500
 
@@ -229,6 +335,61 @@ def upload_file():
         return jsonify(result), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
+
+@app.route('/batch-convert', methods=['POST'])
+def batch_convert():
+    """Converte múltiplas coordenadas em lote."""
+    try:
+        if not request.json:
+            return jsonify({'error': 'Nenhum dado JSON fornecido'}), 400
+        
+        data = request.json
+        
+        if 'coordinates' not in data or not isinstance(data['coordinates'], list):
+            return jsonify({'error': 'Campo "coordinates" deve ser uma lista'}), 400
+        
+        src_system = data.get('src_system')
+        dst_system = data.get('dst_system')
+        src_zone = data.get('src_zone')
+        dst_zone = data.get('dst_zone')
+        
+        if not src_system or not dst_system:
+            return jsonify({'error': 'Sistemas de origem e destino obrigatórios'}), 400
+        
+        results = []
+        errors = []
+        
+        for i, coord in enumerate(data['coordinates']):
+            try:
+                if not isinstance(coord, dict) or 'x' not in coord or 'y' not in coord:
+                    errors.append(f"Coordenada {i}: formato inválido")
+                    continue
+                
+                x = float(coord['x'])
+                y = float(coord['y'])
+                
+                result = convert_between_systems(x, y, src_system, src_zone, dst_system, dst_zone)
+                
+                if result['success']:
+                    result['index'] = i
+                    result['name'] = coord.get('name', f'Ponto {i}')
+                    results.append(result)
+                else:
+                    errors.append(f"Coordenada {i}: {result['error']}")
+            except Exception as e:
+                errors.append(f"Coordenada {i}: {str(e)}")
+        
+        return jsonify({
+            'total': len(data['coordinates']),
+            'successful': len(results),
+            'failed': len(errors),
+            'results': results,
+            'errors': errors
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': f'Erro ao processar requisição: {str(e)}'}), 500
 
 
 @app.errorhandler(404)

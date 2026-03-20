@@ -1,207 +1,289 @@
-// Determinar a URL da API dinamicamente
-function getApiUrl() {
-    // Em produção, usar URL relativa; em desenvolvimento, usar localhost
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:5000';
-    }
-    // Em produção, usar o mesmo domínio
-    return window.location.origin;
-}
+/**
+ * Conversor de Coordenadas - Frontend
+ * Responsável pela conversão de coordenadas entre sistemas de referência
+ */
 
 const API_URL = getApiUrl();
 
-// Funções de conversão de coordenadas
-function dmsToDD(degrees, minutes, seconds, direction) {
-    let dd = parseFloat(degrees) + parseFloat(minutes) / 60 + parseFloat(seconds) / 3600;
-    if (direction === 'S' || direction === 'W') {
-        dd *= -1;
+function getApiUrl() {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000';
     }
-    return dd;
+    return window.location.origin;
 }
 
-function ddToDMS(dd) {
-    const isNegative = dd < 0;
-    dd = Math.abs(dd);
-    const degrees = Math.floor(dd);
-    const minutes = Math.floor((dd - degrees) * 60);
-    const seconds = ((dd - degrees - minutes / 60) * 3600).toFixed(2);
-    return { degrees, minutes, seconds, isNegative };
-}
+// Inicializar ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystems();
+});
 
-async function convert() {
+/**
+ * Carrega os sistemas de referência disponíveis
+ */
+async function loadSystems() {
     try {
-        const coordMode = document.getElementById('coordMode').value;
-        let x, y;
+        const response = await fetch(`${API_URL}/api/systems`);
+        const data = await response.json();
         
-        if (coordMode === 'dd' || coordMode === 'utm') {
-            x = document.getElementById('x').value.trim();
-            y = document.getElementById('y').value.trim();
-        } else if (coordMode === 'dms') {
-            const xd = parseFloat(document.getElementById('xd').value) || 0;
-            const xm = parseFloat(document.getElementById('xm').value) || 0;
-            const xs = parseFloat(document.getElementById('xs').value) || 0;
-            const xdir = document.getElementById('xdir').value;
+        if (data.systems) {
+            // Preencher selects de sistema
+            const srcSystemSelect = document.getElementById('srcSystem');
+            const dstSystemSelect = document.getElementById('dstSystem');
+            const batchSrcSystemSelect = document.getElementById('batchSrcSystem');
+            const batchDstSystemSelect = document.getElementById('batchDstSystem');
             
-            const yd = parseFloat(document.getElementById('yd').value) || 0;
-            const ym = parseFloat(document.getElementById('ym').value) || 0;
-            const ys = parseFloat(document.getElementById('ys').value) || 0;
-            const ydir = document.getElementById('ydir').value;
-            
-            x = dmsToDD(xd, xm, xs, xdir);
-            y = dmsToDD(yd, ym, ys, ydir);
+            data.systems.forEach(system => {
+                const option = document.createElement('option');
+                option.value = system;
+                option.textContent = system;
+                
+                srcSystemSelect.appendChild(option.cloneNode(true));
+                dstSystemSelect.appendChild(option.cloneNode(true));
+                batchSrcSystemSelect.appendChild(option.cloneNode(true));
+                batchDstSystemSelect.appendChild(option.cloneNode(true));
+            });
         }
+    } catch (error) {
+        console.error('Erro ao carregar sistemas:', error);
+    }
+}
+
+/**
+ * Atualiza as zonas UTM de origem
+ */
+async function updateSrcZones() {
+    const system = document.getElementById('srcSystem').value;
+    const hemisphere = document.getElementById('srcHemisphere').value;
+    const zoneSelect = document.getElementById('srcZone');
+    
+    if (!system) {
+        zoneSelect.innerHTML = '<option value="">Selecione...</option>';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/zones?hemisphere=${hemisphere}`);
+        const data = await response.json();
         
-        const src = document.getElementById('src').value;
-        const dst = document.getElementById('dst').value;
-        const description = document.getElementById('pointDesc') ? document.getElementById('pointDesc').value : '';
-        const type = document.getElementById('pointType') ? document.getElementById('pointType').value : 'ponto';
-        const color = document.getElementById('pointColor') ? document.getElementById('pointColor').value : '#ff0000';
+        zoneSelect.innerHTML = '<option value="">Selecione...</option>';
+        if (data.zones) {
+            data.zones.forEach(zone => {
+                const option = document.createElement('option');
+                option.value = zone;
+                option.textContent = zone;
+                zoneSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar zonas:', error);
+    }
+}
+
+/**
+ * Atualiza as zonas UTM de destino
+ */
+async function updateDstZones() {
+    const system = document.getElementById('dstSystem').value;
+    const hemisphere = document.getElementById('dstHemisphere').value;
+    const zoneSelect = document.getElementById('dstZone');
+    
+    if (!system) {
+        zoneSelect.innerHTML = '<option value="">Selecione...</option>';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/zones?hemisphere=${hemisphere}`);
+        const data = await response.json();
         
-        if (!x || !y) {
-            showError('Por favor, preencha as coordenadas X e Y');
+        zoneSelect.innerHTML = '<option value="">Selecione...</option>';
+        if (data.zones) {
+            data.zones.forEach(zone => {
+                const option = document.createElement('option');
+                option.value = zone;
+                option.textContent = zone;
+                zoneSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar zonas:', error);
+    }
+}
+
+/**
+ * Alterna a visibilidade dos inputs de zona UTM de origem
+ */
+function toggleSrcInputs() {
+    const type = document.getElementById('srcType').value;
+    const zoneContainer = document.getElementById('srcZoneContainer');
+    
+    if (type === 'utm') {
+        zoneContainer.style.display = 'grid';
+        updateSrcZones();
+    } else {
+        zoneContainer.style.display = 'none';
+    }
+}
+
+/**
+ * Alterna a visibilidade dos inputs de zona UTM de destino
+ */
+function toggleDstInputs() {
+    const type = document.getElementById('dstType').value;
+    const zoneContainer = document.getElementById('dstZoneContainer');
+    
+    if (type === 'utm') {
+        zoneContainer.style.display = 'grid';
+        updateDstZones();
+    } else {
+        zoneContainer.style.display = 'none';
+    }
+}
+
+/**
+ * Converte coordenadas entre sistemas de referência
+ */
+async function convertCoordinates() {
+    try {
+        // Validar entradas
+        const srcSystem = document.getElementById('srcSystem').value;
+        const srcType = document.getElementById('srcType').value;
+        const srcX = parseFloat(document.getElementById('srcX').value);
+        const srcY = parseFloat(document.getElementById('srcY').value);
+        const dstSystem = document.getElementById('dstSystem').value;
+        const dstType = document.getElementById('dstType').value;
+        
+        if (!srcSystem || !dstSystem || isNaN(srcX) || isNaN(srcY)) {
+            showError('Por favor, preencha todos os campos obrigatórios');
             return;
         }
         
-        if (isNaN(parseFloat(x)) || isNaN(parseFloat(y))) {
-            showError('Coordenadas X e Y devem ser números válidos');
-            return;
+        let srcZone = null;
+        let dstZone = null;
+        
+        if (srcType === 'utm') {
+            srcZone = document.getElementById('srcZone').value;
+            if (!srcZone) {
+                showError('Selecione a zona UTM de origem');
+                return;
+            }
         }
         
-        if (!src || !dst) {
-            showError('Por favor, selecione os sistemas de referência de origem e destino');
-            return;
+        if (dstType === 'utm') {
+            dstZone = document.getElementById('dstZone').value;
+            if (!dstZone) {
+                showError('Selecione a zona UTM de destino');
+                return;
+            }
         }
         
-        showLoading();
-        
-        const response = await fetch(`${API_URL}/convert`, {
+        // Fazer requisição ao backend
+        const response = await fetch(`${API_URL}/convert/system`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                x: parseFloat(x),
-                y: parseFloat(y),
-                src: src,
-                dst: dst,
-                mode: coordMode
+                x: srcX,
+                y: srcY,
+                src_system: srcSystem,
+                src_zone: srcZone,
+                dst_system: dstSystem,
+                dst_zone: dstZone
             })
         });
         
+        const data = await response.json();
+        
         if (!response.ok) {
-            const errorData = await response.json();
-            showError(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+            showError(data.error || 'Erro ao converter coordenadas');
             return;
         }
         
-        const data = await response.json();
+        // Exibir resultado
+        displayResult(data);
         
-        // Adicionar o ponto ao mapa (sempre em WGS84 para o Leaflet)
-        // Se o destino for 4326, usamos o resultado. Se não, a API deve retornar o WGS84 também?
-        // Na verdade, a API /convert retorna as coordenadas no sistema de destino.
-        // O Leaflet precisa de 4326.
-        
-        let latForMap, lngForMap;
-        if (data.dst === "4326") {
-            latForMap = data.y;
-            lngForMap = data.x;
-        } else {
-            // Se o destino não for WGS84, precisamos converter para WGS84 para exibir no mapa
-            // Vamos assumir que a API pode nos dar o WGS84 ou fazemos outra chamada.
-            // Por simplicidade, se o usuário quer ver no mapa, o ideal é que o destino seja 4326.
-            // Mas vamos tentar pegar o ponto original se for 4326.
-            if (data.src === "4326") {
-                latForMap = parseFloat(y);
-                lngForMap = parseFloat(x);
-            } else {
-                // Caso complexo: nem origem nem destino são 4326. 
-                // Para este MVP, vamos alertar ou tentar converter para 4326.
-                const resWgs84 = await fetch(`${API_URL}/convert`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({x: parseFloat(x), y: parseFloat(y), src: src, dst: "4326", mode: coordMode})
-                });
-                const dataWgs84 = await resWgs84.json();
-                latForMap = dataWgs84.y;
-                lngForMap = dataWgs84.x;
-            }
-        }
-        
-        if (typeof addPointToMap === 'function') {
-            addPointToMap(latForMap, lngForMap, type, color, description);
-            map.setView([latForMap, lngForMap], 15);
-        }
-
-        // Formatar resultado de acordo com o modo de saída
-        let resultText = `<strong>Resultado da Conversão:</strong><br>`;
-        resultText += `De: EPSG:${data.src} → Para: EPSG:${data.dst}<br>`;
-        
-        if (coordMode === 'dd' || coordMode === 'utm') {
-            resultText += `X: ${data.x.toFixed(6)}<br>`;
-            resultText += `Y: ${data.y.toFixed(6)}<br>`;
-        } else if (coordMode === 'dms') {
-            const xDMS = ddToDMS(data.x);
-            const yDMS = ddToDMS(data.y);
-            resultText += `X: ${xDMS.degrees}° ${xDMS.minutes}' ${xDMS.seconds}" ${xDMS.isNegative ? 'W' : 'E'}<br>`;
-            resultText += `Y: ${yDMS.degrees}° ${yDMS.minutes}' ${yDMS.seconds}" ${yDMS.isNegative ? 'S' : 'N'}<br>`;
-        }
-        
-        document.getElementById('result').innerHTML = resultText;
-        document.getElementById('result').style.color = 'green';
-        
-        // Limpar campos
-        if (document.getElementById('pointDesc')) document.getElementById('pointDesc').value = '';
+        // Adicionar ponto ao mapa
+        addPointToMap({
+            name: `${srcSystem} → ${dstSystem}`,
+            x: data.x,
+            y: data.y,
+            srcSystem: srcSystem,
+            dstSystem: dstSystem
+        });
         
     } catch (error) {
-        showError(`Erro de conexão: ${error.message}`);
+        showError('Erro ao processar conversão: ' + error.message);
     }
 }
 
+/**
+ * Exibe o resultado da conversão
+ */
+function displayResult(data) {
+    const resultBox = document.getElementById('result');
+    const resultContent = document.getElementById('resultContent');
+    
+    let html = '<div class="result-content">';
+    
+    // Coordenadas de origem
+    html += '<div class="result-item">';
+    html += '<label>Coordenada X</label>';
+    html += `<value>${data.x.toFixed(6)}</value>`;
+    html += '</div>';
+    
+    html += '<div class="result-item">';
+    html += '<label>Coordenada Y</label>';
+    html += `<value>${data.y.toFixed(6)}</value>`;
+    html += '</div>';
+    
+    // Sistema e zona de origem
+    html += '<div class="result-item">';
+    html += '<label>Sistema de Origem</label>';
+    html += `<value>${data.src_system}${data.src_zone ? ' - ' + data.src_zone : ''}</value>`;
+    html += '</div>';
+    
+    // Sistema e zona de destino
+    html += '<div class="result-item">';
+    html += '<label>Sistema de Destino</label>';
+    html += `<value>${data.dst_system}${data.dst_zone ? ' - ' + data.dst_zone : ''}</value>`;
+    html += '</div>';
+    
+    // Código EPSG
+    html += '<div class="result-item">';
+    html += '<label>EPSG Origem</label>';
+    html += `<value>${data.src_epsg}</value>`;
+    html += '</div>';
+    
+    html += '<div class="result-item">';
+    html += '<label>EPSG Destino</label>';
+    html += `<value>${data.dst_epsg}</value>`;
+    html += '</div>';
+    
+    html += '</div>';
+    
+    resultContent.innerHTML = html;
+    resultBox.style.display = 'block';
+}
+
+/**
+ * Exibe mensagem de erro
+ */
 function showError(message) {
-    document.getElementById("result").innerHTML = `<strong style="color: red;">Erro:</strong> ${message}`;
-    document.getElementById("result").style.color = 'red';
+    const resultBox = document.getElementById('result');
+    const resultContent = document.getElementById('resultContent');
+    
+    resultContent.innerHTML = `<div class="error-message">${message}</div>`;
+    resultBox.style.display = 'block';
 }
 
-function showLoading() {
-    document.getElementById("result").innerHTML = '<em>Convertendo...</em>';
-    document.getElementById("result").style.color = 'gray';
-}
-
-// Permitir converter ao pressionar Enter
-document.addEventListener('DOMContentLoaded', function() {
-    const xInput = document.getElementById("x");
-    const yInput = document.getElementById("y");
+/**
+ * Exibe mensagem de sucesso
+ */
+function showSuccess(message) {
+    const resultBox = document.getElementById('result');
+    const resultContent = document.getElementById('resultContent');
     
-    if (xInput) {
-        xInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') convert();
-        });
-    }
-    
-    if (yInput) {
-        yInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') convert();
-        });
-    }
-});
-
-function toggleCoordInputs() {
-    const mode = document.getElementById('coordMode').value;
-    const ddInputs = document.getElementById('ddInputs');
-    const dmsInputs = document.getElementById('dmsInputs');
-    
-    if (ddInputs) ddInputs.style.display = (mode === 'dd' || mode === 'utm') ? 'block' : 'none';
-    if (dmsInputs) dmsInputs.style.display = (mode === 'dms') ? 'block' : 'none';
-    
-    if (mode === 'utm') {
-        const xLabel = document.querySelector('label[for="x"]');
-        const yLabel = document.querySelector('label[for="y"]');
-        if (xLabel) xLabel.innerText = "Easting (X):";
-        if (yLabel) yLabel.innerText = "Northing (Y):";
-    } else {
-        const xLabel = document.querySelector('label[for="x"]');
-        const yLabel = document.querySelector('label[for="y"]');
-        if (xLabel) xLabel.innerText = "Longitude (X):";
-        if (yLabel) yLabel.innerText = "Latitude (Y):";
-    }
+    resultContent.innerHTML = `<div class="success-message">${message}</div>`;
+    resultBox.style.display = 'block';
 }
