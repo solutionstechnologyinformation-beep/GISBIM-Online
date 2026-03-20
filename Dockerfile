@@ -42,4 +42,4 @@ EXPOSE 5000
 # Comando para iniciar a aplicação Flask usando Gunicorn
 # Usamos 'backend.app:app' porque o diretório 'backend' é um pacote (tem __init__.py)
 # e estamos no diretório /app (WORKDIR)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "backend.app:app"]
+CMD gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 backend.app:app
