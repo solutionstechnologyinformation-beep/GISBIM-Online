@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIS Online - Plataforma de Análise Geoespacial</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>🗺️ GIS Online</h1>
+        <p>Plataforma de Análise Geoespacial com Transformação de Coordenadas e Dados Oficiais</p>
+    </header>
+
+    <main>
+        <section class="map-container-section">
+            <div class="map-layout">
+                <aside class="map-sidebar" id="sidebar">
+                    <div class="sidebar-tabs">
+                        <button class="tab-btn active" onclick="openTab('filterTab')">Filtros</button>
+                        <button class="tab-btn" onclick="openTab('layersTab')">Camadas</button>
+                        <button class="tab-btn" onclick="openTab('dataTab')">Dados</button>
+                    </div>
+
+                    <div id="filterTab" class="tab-content active">
+                        <h3>Filtro de Pontos</h3>
+                        <div class="form-group">
+                            <label for="filterDescription">Filtrar por Descrição:</label>
+                            <input type="text" id="filterDescription" placeholder="Digite a descrição..." oninput="filterPointsByDescription()">
+                        </div>
+                        <div class="filter-stats">
+                            <p id="pointsCount">Pontos visíveis: 0</p>
+                        </div>
+                        <hr>
+                        <div class="layer-selector">
+                            <h4>Camada Base</h4>
+                            <div class="layer-option">
+                                <input type="radio" name="baseLayer" id="layerRoad" value="road" checked onchange="changeBaseLayer('road')">
+                                <label for="layerRoad">Mapa (OSM)</label>
+                            </div>
+                            <div class="layer-option">
+                                <input type="radio" name="baseLayer" id="layerSatellite" value="satellite" onchange="changeBaseLayer('satellite')">
+                                <label for="layerSatellite">Satélite</label>
+                            </div>
+                            <div class="layer-option">
+                                <input type="radio" name="baseLayer" id="layerTerrain" value="terrain" onchange="changeBaseLayer('terrain')">
+                                <label for="layerTerrain">Terreno</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="layersTab" class="tab-content">
+                        <h3>Camadas Adicionais</h3>
+                        <div class="form-group">
+                            <label for="layerSelect">Selecionar Camada:</label>
+                            <select id="layerSelect" onchange="toggleLayer()">
+                                <option value="">-- Nenhuma --</option>
+                                <option value="ibge_municipios">IBGE - Municípios</option>
+                                <option value="ibge_estados">IBGE - Estados</option>
+                                <option value="mapbiomas">MapBiomas - Uso do Solo</option>
+                            </select>
+                        </div>
+                        <div id="layerInfo" class="layer-info"></div>
+                    </div>
+
+                    <div id="dataTab" class="tab-content">
+                        <h3>Informações do Ponto</h3>
+                        <div id="dataDetails">
+                            <p class="hint">Selecione um ponto no mapa para ver os detalhes.</p>
+                        </div>
+                    </div>
+                </aside>
+                
+                <div class="map-wrapper">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tools-section">
+            <h2>Adicionar Novo Ponto / Ativo</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="coordMode">Modo de Coordenadas:</label>
+                    <select id="coordMode" onchange="toggleCoordInputs()">
+                        <option value="dd">Graus Decimais (DD)</option>
+                        <option value="utm">UTM</option>
+                        <option value="dms">Graus Minutos Segundos (DMS)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sourceEPSG">Sistema de Origem:</label>
+                    <select id="sourceEPSG">
+                        <option value="4326">WGS84 (4326)</option>
+                        <option value="4674">SIRGAS2000 (4674)</option>
+                        <option value="4618">SAD69 (4618)</option>
+                        <option value="32723">UTM Zona 23S (32723)</option>
+                        <option value="31983">SIRGAS2000 UTM Zona 23S (31983)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="ddInputs" class="coord-input-group">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="x">Longitude (X):</label>
+                        <input type="number" id="x" step="0.000001" placeholder="-52.123456">
+                    </div>
+                    <div class="form-group">
+                        <label for="y">Latitude (Y):</label>
+                        <input type="number" id="y" step="0.000001" placeholder="-14.123456">
+                    </div>
+                </div>
+            </div>
+
+            <div id="utmInputs" class="coord-input-group" style="display:none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="utmZone">Zona UTM:</label>
+                        <input type="number" id="utmZone" min="1" max="60" placeholder="23">
+                    </div>
+                    <div class="form-group">
+                        <label for="utmHemisphere">Hemisfério:</label>
+                        <select id="utmHemisphere">
+                            <option value="S">Sul (S)</option>
+                            <option value="N">Norte (N)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="utmEasting">Easting:</label>
+                        <input type="number" id="utmEasting" placeholder="500000">
+                    </div>
+                    <div class="form-group">
+                        <label for="utmNorthing">Northing:</label>
+                        <input type="number" id="utmNorthing" placeholder="8000000">
+                    </div>
+                </div>
+            </div>
+
+            <div id="dmsInputs" class="coord-input-group" style="display:none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Longitude (DMS):</label>
+                        <div class="dms-group">
+                            <input type="number" id="xd" placeholder="Graus" style="width: 30%;">
+                            <input type="number" id="xm" placeholder="Min" style="width: 30%;">
+                            <input type="number" id="xs" placeholder="Seg" style="width: 30%;">
+                            <select id="xdir" style="width: 10%;">
+                                <option value="E">E</option>
+                                <option value="W">W</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Latitude (DMS):</label>
+                        <div class="dms-group">
+                            <input type="number" id="yd" placeholder="Graus" style="width: 30%;">
+                            <input type="number" id="ym" placeholder="Min" style="width: 30%;">
+                            <input type="number" id="ys" placeholder="Seg" style="width: 30%;">
+                            <select id="ydir" style="width: 10%;">
+                                <option value="N">N</option>
+                                <option value="S">S</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="pointDesc">Descrição:</label>
+                    <input type="text" id="pointDesc" placeholder="Ex: Ponto de Interesse">
+                </div>
+                <div class="form-group">
+                    <label for="pointType">Tipo:</label>
+                    <select id="pointType">
+                        <option value="ponto">Ponto Genérico</option>
+                        <option value="estacao">Estação</option>
+                        <option value="marco">Marco Geodésico</option>
+                        <option value="limite">Limite Administrativo</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="preview-section" id="previewSection" style="display:none;">
+                <h4>Preview - Antes e Depois</h4>
+                <div class="preview-grid">
+                    <div class="preview-box">
+                        <p><strong>Coordenadas de Origem:</strong></p>
+                        <p id="previewBefore">--</p>
+                    </div>
+                    <div class="preview-box">
+                        <p><strong>Coordenadas Convertidas:</strong></p>
+                        <p id="previewAfter">--</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="result" class="result-box"></div>
+
+            <button onclick="convert()" class="btn-convert">Adicionar Ponto ao Mapa</button>
+        </section>
+
+        <section class="export-section">
+            <h2>Ferramentas e Exportação</h2>
+            <div class="btn-grid">
+                <button onclick="exportData()" class="btn-convert">Exportar Dados (GeoJSON)</button>
+                <button onclick="importFile()" class="btn-upload">Importar Arquivo</button>
+                <button onclick="clearMap()" class="btn-clear">Limpar Tudo</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>GIS Online © 2024 | Plataforma de Análise Geoespacial</p>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Custom Scripts -->
+    <script src="map.js"></script>
+    <script src="converter.js"></script>
+    <script src="upload.js"></script>
+</body>
+
+</html>

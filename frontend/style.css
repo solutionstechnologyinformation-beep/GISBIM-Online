@@ -1,0 +1,406 @@
+/* Reset e estilos globais */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    color: white;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+}
+
+header p {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* Main content */
+main {
+    max-width: 1400px;
+    margin: 1.5rem auto;
+    padding: 0 1rem;
+}
+
+section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+section h2 {
+    color: #2d3748;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    border-bottom: 2px solid #4a5568;
+    padding-bottom: 0.5rem;
+}
+
+/* Layout do Mapa com Aba Lateral */
+.map-layout {
+    display: flex;
+    gap: 1rem;
+    height: 650px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.map-sidebar {
+    width: 320px;
+    background: #f8f9fa;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Abas na Sidebar */
+.sidebar-tabs {
+    display: flex;
+    background: #e2e8f0;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: #4a5568;
+    transition: background 0.2s;
+    font-size: 0.85rem;
+}
+
+.tab-btn.active {
+    background: #fff;
+    color: #2d3748;
+    border-bottom: 2px solid #2d3748;
+}
+
+.tab-content {
+    display: none;
+    padding: 1rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.map-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+/* Estilos de Formulário */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+input, select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #2d3748;
+    box-shadow: 0 0 0 3px rgba(45, 55, 72, 0.1);
+}
+
+/* Grupos de Coordenadas */
+.coord-input-group {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.dms-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.dms-group input,
+.dms-group select {
+    margin: 0;
+}
+
+/* Botões */
+.btn-convert, .btn-upload, .btn-clear {
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    color: white;
+    font-size: 0.95rem;
+}
+
+.btn-convert { 
+    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); 
+}
+
+.btn-upload { 
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); 
+}
+
+.btn-clear { 
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+}
+
+.btn-convert:hover, .btn-upload:hover, .btn-clear:hover { 
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+/* Ficha de Dados */
+.data-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 4px solid #4a5568;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.data-card h4 {
+    margin-bottom: 0.5rem;
+    color: #2d3748;
+}
+
+.data-card p {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+/* Preview Section */
+.preview-section {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f0f9ff;
+    border-radius: 6px;
+    border-left: 4px solid #3182ce;
+}
+
+.preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.preview-box {
+    background: white;
+    padding: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid #cbd5e0;
+}
+
+.preview-box p {
+    margin: 0.25rem 0;
+    font-size: 0.85rem;
+}
+
+.preview-box strong {
+    color: #2d3748;
+}
+
+/* Resultado / Mensagens */
+.result-box {
+    margin: 1rem 0;
+    padding: 1rem;
+    border-radius: 6px;
+    min-height: 2rem;
+    background: #f8f9fa;
+    border: 1px solid #cbd5e0;
+    font-size: 0.9rem;
+}
+
+.result-box.success {
+    background: #c6f6d5;
+    border-color: #9ae6b4;
+    color: #22543d;
+}
+
+.result-box.error {
+    background: #fed7d7;
+    border-color: #fc8181;
+    color: #c53030;
+}
+
+.result-box.info {
+    background: #e6f2ff;
+    border-color: #90cdf4;
+    color: #2c5282;
+}
+
+/* Camadas e Filtros */
+.layer-selector {
+    margin-top: 1rem;
+}
+
+.layer-option {
+    display: flex;
+    align-items: center;
+    margin: 0.5rem 0;
+}
+
+.layer-option input[type="radio"] {
+    width: auto;
+    margin-right: 0.5rem;
+}
+
+.layer-option label {
+    margin: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.layer-info {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #f0f9ff;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.filter-stats {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: #e2e8f0;
+    border-radius: 4px;
+}
+
+.filter-stats p {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+/* Hints e Informações */
+.hint {
+    color: #718096;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.info {
+    color: #2c5282;
+    font-size: 0.85rem;
+}
+
+/* Footer */
+footer {
+    background-color: #1a202c;
+    color: white;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    margin-top: 2rem;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .map-layout { 
+        flex-direction: column; 
+        height: auto; 
+    }
+    
+    .map-sidebar { 
+        width: 100%; 
+        height: 300px; 
+    }
+    
+    .map-wrapper { 
+        height: 400px; 
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .preview-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    section {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
+    section h2 {
+        font-size: 1.2rem;
+    }
+    
+    .map-layout {
+        height: auto;
+    }
+    
+    .map-sidebar {
+        height: auto;
+    }
+    
+    .map-wrapper {
+        height: 300px;
+    }
+}
